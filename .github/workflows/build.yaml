@@ -1,0 +1,107 @@
+name: Build Browser
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_arch:
+        description: 'Android arch [arm64/arm/x64]'
+        required: true
+        default: 'arm64'
+      debug:
+        description: 'debug? [true/false]'
+        required: false
+        default: 'false'
+      create_release:
+        description: 'Create GitHub Release? [true/false]'
+        required: false
+        default: 'false'
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 1440
+
+    container:
+      image: uazo/cromite-build:build
+      env:
+        REMOVEDOCKERSUPPORT: true
+        USELOCALIMAGE: true
+        USEINTERNALNETWORK: true
+        WORKSPACE: /home/lg/working_dir
+        HOME: /home/lg/working_dir
+        TARGET_OS: android
+        TARGET_ISDEBUG: ${{ inputs.debug }}
+        USE_KEYSTORE: true
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        CROMITE_PREF_HASH_SEED_BIN: ${{ secrets.CROMITE_PREF_HASH_SEED_BIN }}
+    volumes:
+      - ./out:${{ env.WORKSPACE }}/chromium/src/out
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          path: cromite
+
+      - name: Prepare Build Container
+        shell: bash
+        run: |
+          set -e
+          PATH=$WORKSPACE/chromium/src/third_party/llvm-build/Release+Asserts/bin:$WORKSPACE/depot_tools/:/usr/local/go/bin:$WORKSPACE/mtool/bin:$PATH
+          cd $WORKSPACE
+
+          test -d chromium/src/out || sudo mkdir -p chromium/src/out
+          test -d chromium/src/out/arm64 || sudo mkdir -p chromium/src/out/arm64
+          test -d chromium/src/out/arm || sudo mkdir -p chromium/src/out/arm
+          test -d chromium/src/out/x64 || sudo mkdir -p chromium/src/out/x64
+
+          # bootstrap python3 for gn
+          echo ../../../../../usr/bin >$WORKSPACE/depot_tools/python3_bin_reldir.txt
+
+      - name: Build Android ${{ inputs.target_arch }}
+        shell: bash
+        run: |
+          set -e
+          ARCH="${{ inputs.target_arch }}"
+          if [ "$ARCH" = "arm64" ]; then TARGET_CPU="arm64"; OUT_DIR="out/arm64"; APK_NAME="arm64_ChromePublic.apk";
+          elif [ "$ARCH" = "arm" ]; then TARGET_CPU="arm"; OUT_DIR="out/arm"; APK_NAME="arm_ChromePublic.apk";
+          else TARGET_CPU="x64"; OUT_DIR="out/x64"; APK_NAME="x64_ChromePublic.apk"; fi
+
+          PATH=$WORKSPACE/chromium/src/third_party/llvm-build/Release+Asserts/bin:$WORKSPACE/depot_tools/:/usr/local/go/bin:$WORKSPACE/mtool/bin:$PATH
+          cd $WORKSPACE/chromium/src
+
+          echo "-------- gn gen"
+          gn gen --args="target_os = \"android\" $(cat /home/lg/working_dir/cromite/build/cromite.gn_args) target_cpu = \"${TARGET_CPU}\"" ${OUT_DIR}
+
+          echo "-------- gn args"
+          gn args ${OUT_DIR}/ --list --short
+
+          echo "-------- ninja build"
+          vpython3 $WORKSPACE/depot_tools/siso.py ninja -C ${OUT_DIR} chrome_public_bundle --offline
+          vpython3 $WORKSPACE/depot_tools/siso.py ninja -C ${OUT_DIR} chrome_public_apk --offline
+
+          # copy APK to workspace
+          cp ${OUT_DIR}/apks/ChromePublic.apk $WORKSPACE/${APK_NAME}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.target_arch }}-ChromePublic.apk
+          path: ${{ env.WORKSPACE }}/ChromePublic.apk
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create_release == 'true' }}
+        shell: bash
+        run: |
+          set -e
+          VERSION=$(cat $WORKSPACE/cromite/build/RELEASE)
+          ARCH="${{ inputs.target_arch }}"
+          APK_FILE="$WORKSPACE/${ARCH}_ChromePublic.apk"
+          RELEASE_TAG="v${VERSION}-${ARCH}"
+          RELEASE_NAME="Browser ${VERSION} (${ARCH})"
+
+          gh release create "${RELEASE_TAG}" \
+            --title "${RELEASE_NAME}" \
+            --generate-notes \
+            "${APK_FILE}" \
+            --repo "${{ github.repository }}"
