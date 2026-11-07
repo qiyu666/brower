@@ -120,7 +120,6 @@ diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
  # ==============================================================================
  # TOOLCHAIN SETUP
  # ==============================================================================
-
 diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
 --- a/chrome/android/java/AndroidManifest.xml
 +++ b/chrome/android/java/AndroidManifest.xml
@@ -129,7 +128,7 @@ diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/Andro
          android:icon="@drawable/ic_launcher"
          android:roundIcon="@drawable/ic_launcher_round"
 -        android:label="{% block application_label %}@string/app_name{% endblock %}"
-+        android:label="@string/app_name"
++        android:label="Cromite"
          android:memtagMode="async"
          android:largeHeap="false"
          android:manageSpaceActivity="@string/manage_space_activity"
@@ -9156,10 +9155,10 @@ diff --git a/chrome/android/java/res_chromium_base/values/channel_constants.xml 
 -    <string name="bookmark_widget_title" translatable="false">Chromium bookmarks</string>
 -    <string name="search_widget_title" translatable="false">Chromium search</string>
 -    <string name="quick_action_search_widget_title" translatable="false">Chromium quick action search</string>
-+    <string name="app_name" translatable="false">Browser</string>
-+    <string name="bookmark_widget_title" translatable="false">Browser bookmarks</string>
-+    <string name="search_widget_title" translatable="false">Browser search</string>
-+    <string name="quick_action_search_widget_title" translatable="false">Browser quick action search</string>
++    <string name="app_name" translatable="false">Cromite</string>
++    <string name="bookmark_widget_title" translatable="false">Cromite bookmarks</string>
++    <string name="search_widget_title" translatable="false">Cromite search</string>
++    <string name="quick_action_search_widget_title" translatable="false">Cromite quick action search</string>
  </resources>
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
 --- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
@@ -9197,8 +9196,8 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/Br
 -    private static final String UPDATE_VERSION_URL = "https://github.com/bromite/bromite/releases/latest/download/";
 -    private final String UPSTREAM_VERSION_URL = "https://www.bromite.org/upstream.txt";
 -    public static final String VULNERABLE_VERSION_DOC_URL = "https://www.bromite.org/vulnerable-version";
-+    private final String REDIRECT_URL_PREFIX = "https://github.com/qiyu666/brower/releases/download/";
-+    private static final String UPDATE_VERSION_URL = "https://github.com/qiyu666/brower/releases/latest/download/";
++    private final String REDIRECT_URL_PREFIX = "https://github.com/uazo/cromite/releases/download/";
++    private static final String UPDATE_VERSION_URL = "https://github.com/uazo/cromite/releases/latest/download/";
 +    private final String UPSTREAM_VERSION_URL = "";
 +    public static final String VULNERABLE_VERSION_DOC_URL = "";
  
@@ -9209,7 +9208,7 @@ diff --git a/chrome/android/java/src/org/chromium/chrome/browser/omaha/inline/Br
                          if (redirectURL.indexOf(REDIRECT_URL_PREFIX) == 0) {
                              redirectURL = redirectURL.substring(REDIRECT_URL_PREFIX.length());
 +                            // adapt url
-+                            // example https://github.com/qiyu666/brower/releases/download/v114.0.5735.199-af55aa0ddfc47fbaffafd60c385d4c43c7c5ad0c
++                            // example https://github.com/uazo/cromite/releases/download/v114.0.5735.199-af55aa0ddfc47fbaffafd60c385d4c43c7c5ad0c
 +                            String[] url_parts = redirectURL.split(Pattern.quote("-"));
 +                            if (url_parts.length > 0) {
 +                                redirectURL = url_parts[0].substring(1);
@@ -9290,10 +9289,10 @@ diff --git a/chrome/app/theme/chromium/BRANDING b/chrome/app/theme/chromium/BRAN
 -PRODUCT_SHORTNAME=Chromium
 -PRODUCT_INSTALLER_FULLNAME=Chromium Installer
 -PRODUCT_INSTALLER_SHORTNAME=Chromium Installer
-+PRODUCT_FULLNAME=Browser
-+PRODUCT_SHORTNAME=Browser
-+PRODUCT_INSTALLER_FULLNAME=Browser Installer
-+PRODUCT_INSTALLER_SHORTNAME=Browser Installer
++PRODUCT_FULLNAME=Cromite
++PRODUCT_SHORTNAME=Cromite
++PRODUCT_INSTALLER_FULLNAME=Cromite Installer
++PRODUCT_INSTALLER_SHORTNAME=Cromite Installer
  COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Chromium Authors. All rights reserved.
  MAC_BUNDLE_ID=org.chromium.Chromium
  MAC_CREATOR_CODE=Cr24
@@ -13517,7 +13516,7 @@ diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chro
        </message>
        <message name="IDS_LEGAL_INFORMATION_SUMMARY" desc="Summary for legal information" meaning="Android">
 -        Copyright <ph name="year">%1$d<ex>2014</ex></ph> Google LLC. All rights reserved.
-+        <ph name="year">%1$d<ex>2014</ex></ph> Browser
++        <ph name="year">%1$d<ex>2014</ex></ph> Cromite.org
        </message>
        <message name="IDS_APPLICATION_VERSION_TITLE" desc="Title for application version">
          Application version
@@ -13549,7 +13548,7 @@ diff --git a/chrome/common/url_constants.h b/chrome/common/url_constants.h
  
  inline constexpr char kChromeHelpViaWebUIURL[] =
 -    "https://support.google.com/chrome?p=help&ctx=settings";
-+    "https://github.com/qiyu666/brower/issues";
++    "https://github.com/uazo/cromite/issues";
  #if BUILDFLAG(IS_CHROMEOS)
  inline constexpr char kChromeOsHelpViaWebUIURL[] =
  #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -13558,7 +13557,7 @@ diff --git a/chrome/common/url_constants.h b/chrome/common/url_constants.h
  
  // The URL for the Chromium project used in the About dialog.
 -inline constexpr char16_t kChromiumProjectURL[] = u"https://www.chromium.org/";
-+inline constexpr char16_t kChromiumProjectURL[] = u"https://github.com/qiyu666/brower";
++inline constexpr char16_t kChromiumProjectURL[] = u"https://www.cromite.org/";
  #if BUILDFLAG(IS_CHROMEOS)
  static_assert(std::u16string_view(kChromiumProjectURL) ==
                ash::chrome_external_urls::kChromiumProjectURL);
@@ -13570,7 +13569,7 @@ diff --git a/chrome/install_static/chromium_install_modes.h b/chrome/install_sta
  // The brand-specific product name to be included as a component of the install
  // and user data directory paths.
 -inline constexpr wchar_t kProductPathName[] = L"Chromium";
-+inline constexpr wchar_t kProductPathName[] = L"Browser";
++inline constexpr wchar_t kProductPathName[] = L"Cromite";
  
  // The brand-specific safe browsing client name.
  inline constexpr char kSafeBrowsingName[] = "chromium";
@@ -19402,13 +19401,13 @@ diff --git a/tools/grit/grit/grd_reader.py b/tools/grit/grit/grd_reader.py
 +    content = content.replace("chromebook", "zzzyyyyxxxx9")
 +    content = content.replace("chromeos", "zzzyyyyxxxxA")
 +
-+    content = content.replace("google chrome", "browser")
-+    content = content.replace("Chrome", "Browser")
-+    content = content.replace("Chromium", "Browser")
-+    content = content.replace("Bromite", "Browser")
-+    content = content.replace("chrome", "browser")
-+    content = content.replace("chromium", "browser")
-+    content = content.replace("bromite", "browser")
++    content = content.replace("google chrome", "cromite")
++    content = content.replace("Chrome", "Cromite")
++    content = content.replace("Chromium", "Cromite")
++    content = content.replace("Bromite", "Cromite")
++    content = content.replace("chrome", "cromite")
++    content = content.replace("chromium", "cromite")
++    content = content.replace("bromite", "cromite")
 +
 +    content = content.replace("zzzyyyyxxxx1", "Chromium")
 +    content = content.replace("zzzyyyyxxxx2", "Chrome")
