@@ -1,0 +1,77 @@
+name: Build Docker Images
+
+on:
+  workflow_dispatch:
+
+env:
+  REMOVEDOCKERSUPPORT: true
+  USELOCALIMAGE: true
+
+jobs:
+  build_images:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 360
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          path: cromite
+
+      - name: Get Chromium version
+        shell: bash
+        run: |
+          VERSION=$(cat ./cromite/build/RELEASE)
+          echo "Building images for Chromium $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Build build-deps image
+        shell: bash
+        run: |
+          docker pull uazo/build-deps:$VERSION || true
+          if [ $(docker inspect --type=image uazo/build-deps:$VERSION 2>/dev/null; echo $?) -ne 0 ]; then
+            DOCKER_BUILDKIT=1 docker build -t uazo/build-deps:$VERSION \
+              --progress plain \
+              --build-arg VERSION=$VERSION \
+              cromite/tools/images/build-deps/.
+          fi
+
+      - name: Build chromium image
+        shell: bash
+        run: |
+          docker pull uazo/chromium:$VERSION || true
+          if [ $(docker inspect --type=image uazo/chromium:$VERSION 2>/dev/null; echo $?) -ne 0 ]; then
+            DOCKER_BUILDKIT=1 docker build -t uazo/chromium:$VERSION \
+              --progress plain \
+              --build-arg VERSION=$VERSION \
+              cromite/tools/images/chr-source/.
+          fi
+
+      - name: Build cromite image
+        shell: bash
+        run: |
+          SHA=$(git -C cromite rev-parse HEAD)
+          docker pull uazo/cromite:$VERSION-$SHA || true
+          if [ $(docker inspect --type=image uazo/cromite:$VERSION-$SHA 2>/dev/null; echo $?) -ne 0 ]; then
+            DOCKER_BUILDKIT=1 docker build -t uazo/cromite:$VERSION-$SHA \
+              --progress plain \
+              --build-arg CROMITE_SHA=$SHA \
+              --build-arg VERSION=$VERSION \
+              cromite/tools/images/cromite-source/.
+          fi
+
+      - name: Build cromite-build image
+        shell: bash
+        run: |
+          SHA=$(git -C cromite rev-parse HEAD)
+          docker pull uazo/cromite-build:$VERSION-$SHA || true
+          if [ $(docker inspect --type=image uazo/cromite-build:$VERSION-$SHA 2>/dev/null; echo $?) -ne 0 ]; then
+            DOCKER_BUILDKIT=1 docker build -t uazo/cromite-build:$VERSION-$SHA \
+              --progress plain \
+              --build-arg CROMITE_SHA=$SHA \
+              --build-arg VERSION=$VERSION \
+              --no-cache \
+              cromite/tools/images/cromite-build/.
+          fi
+
+          docker tag uazo/cromite-build:$VERSION-$SHA uazo/cromite-build:build
+          echo "Docker images ready. Use 'Build Browser' workflow to build the APK."
