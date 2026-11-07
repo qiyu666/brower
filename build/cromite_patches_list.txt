@@ -335,4 +335,4 @@ Eyeo-Adblock-for-Cromite.patch
 # extension patches
 Experimental-support-for-extensions-on-Android.patch
 Enable-extension-in-incognito.patch
-Set-app-branding.patch
+#Set-app-branding.patch
