@@ -249,7 +249,7 @@ Enables-keyword-based-site-search-on-Android-devices.patch
 Disable-Android-AppRestrictions.patch
 Customize-selection-popup.patch
 Enables-deactivation-of-the-js-debugger-statement.patch
-Enable-gwp-asan-on-Android.patch
+#Enable-gwp-asan-on-Android.patch
 Disable-Read-Aloud-by-default.patch
 Disable-Compose-feature.patch
 Disable-offline-autofetch-flag.patch
