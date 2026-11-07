@@ -27,8 +27,8 @@ jobs:
       - name: Build build-deps image
         shell: bash
         run: |
-          docker pull uazo/build-deps:$VERSION || true
-          if [ $(docker inspect --type=image uazo/build-deps:$VERSION 2>/dev/null; echo $?) -ne 0 ]; then
+          if ! docker pull uazo/build-deps:$VERSION 2>&1; then
+            echo "Pull failed, building from scratch..."
             DOCKER_BUILDKIT=1 docker build -t uazo/build-deps:$VERSION \
               --progress plain \
               --build-arg VERSION=$VERSION \
@@ -38,8 +38,8 @@ jobs:
       - name: Build chromium image
         shell: bash
         run: |
-          docker pull uazo/chromium:$VERSION || true
-          if [ $(docker inspect --type=image uazo/chromium:$VERSION 2>/dev/null; echo $?) -ne 0 ]; then
+          if ! docker pull uazo/chromium:$VERSION 2>&1; then
+            echo "Pull failed, building from scratch..."
             DOCKER_BUILDKIT=1 docker build -t uazo/chromium:$VERSION \
               --progress plain \
               --build-arg VERSION=$VERSION \
@@ -50,8 +50,8 @@ jobs:
         shell: bash
         run: |
           SHA=$(git -C cromite rev-parse HEAD)
-          docker pull uazo/cromite:$VERSION-$SHA || true
-          if [ $(docker inspect --type=image uazo/cromite:$VERSION-$SHA 2>/dev/null; echo $?) -ne 0 ]; then
+          if ! docker pull uazo/cromite:$VERSION-$SHA 2>&1; then
+            echo "Pull failed, building from scratch..."
             DOCKER_BUILDKIT=1 docker build -t uazo/cromite:$VERSION-$SHA \
               --progress plain \
               --build-arg CROMITE_SHA=$SHA \
@@ -63,8 +63,8 @@ jobs:
         shell: bash
         run: |
           SHA=$(git -C cromite rev-parse HEAD)
-          docker pull uazo/cromite-build:$VERSION-$SHA || true
-          if [ $(docker inspect --type=image uazo/cromite-build:$VERSION-$SHA 2>/dev/null; echo $?) -ne 0 ]; then
+          if ! docker pull uazo/cromite-build:$VERSION-$SHA 2>&1; then
+            echo "Pull failed, building from scratch..."
             DOCKER_BUILDKIT=1 docker build -t uazo/cromite-build:$VERSION-$SHA \
               --progress plain \
               --build-arg CROMITE_SHA=$SHA \
