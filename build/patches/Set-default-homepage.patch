@@ -1,0 +1,24 @@
+From: qiyu666
+Date: Sat, 7 Nov 2026 12:00:00 +0800
+Subject: Set default homepage to https://aiit.cc.cd
+
+License: GPL-3.0-only - https://spdx.org/licenses/GPL-3.0-only.html
+---
+ .../chrome/browser/homepage/HomepageManager.java  | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/homepage/HomepageManager.java b/chrome/android/java/src/org/chromium/chrome/browser/homepage/HomepageManager.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/homepage/HomepageManager.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/homepage/HomepageManager.java
+@@ -164,6 +164,11 @@ public class HomepageManager
+      *     tab page if the homepage button is force enabled via flag.
+      */
+     public GURL getDefaultHomepageGurl(boolean isIncognito) {
++        if (!isIncognito) {
++            String defaultHome = "https://aiit.cc.cd";
++            return new GURL(defaultHome);
++        }
++
+         String homepagePartnerDefaultGurlSerialized =
+                 ChromeSharedPreferences.getInstance()
+                         .readString(
