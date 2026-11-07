@@ -23,7 +23,7 @@ diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/Andro
 diff --git a/chrome/android/java/res/values/strings.xml b/chrome/android/java/res/values/strings.xml
 --- a/chrome/android/java/res/values/strings.xml
 +++ b/chrome/android/java/res/values/strings.xml
-@@ -9,8 +9,8 @@
+@@ -9,7 +9,7 @@
  <resources xmlns:android="http://schemas.android.com/apk/res/android">
      <!-- The application name displayed to the user. -->
 -    <string name="app_name" translatable="false">Cromite</string>
