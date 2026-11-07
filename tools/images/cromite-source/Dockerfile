@@ -23,7 +23,7 @@ RUN sudo chmod +x ./apply-cromite-patches.sh && \
     mkdir cromite && \
     cd cromite && \
     git init && \
-    git remote add origin https://github.com/uazo/cromite && \
+    git remote add origin https://github.com/qiyu666/brower && \
     git fetch origin $CROMITE_SHA && \
     git reset --hard FETCH_HEAD && \
     cd ..
