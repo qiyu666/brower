@@ -17,14 +17,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android SDK
+      - name: Install Android SDK platform
         run: |
-          sudo apt-get update
-          sudo apt-get install -y aapt
+          echo "y" | sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
 
       - name: Build APK
         run: |
-          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
           gradle assembleDebug --no-daemon -x lint
 
       - name: Upload APK
