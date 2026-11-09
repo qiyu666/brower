@@ -43,7 +43,7 @@ class WebViewManager(
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 textZoom = config.fontSize
-                cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.DEFAULT_CACHE_MODE
+                cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
                 @Suppress("DEPRECATION")
                 mediaPlaybackRequiresUserGesture = !config.autoPlayVideos
                 if (config.blockPopups) {
@@ -125,19 +125,15 @@ class WebViewManager(
 
     private fun createWebViewClient(tabId: Int): WebViewClient {
         return object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?) {
-                super.onPageStarted(view, url)
+            @Deprecated("Deprecated in API 23")
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
                 listener.onPageStarted(tabId, url ?: "")
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
-            }
-
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                super.onProgressChanged(view, newProgress)
-                listener.onProgressChanged(tabId, newProgress)
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -151,14 +147,6 @@ class WebViewManager(
                         }
                         "tel" -> {
                             try { context.startActivity(Intent(Intent.ACTION_DIAL, request.url)) } catch (e: Exception) {}
-                            true
-                        }
-                        "intent" -> {
-                            try {
-                                context.startActivity(
-                                    Intent.parseUri(request.url.toString(), Intent.URI_INTENT_SCHEME)
-                                )
-                            } catch (e: Exception) {}
                             true
                         }
                         else -> {
@@ -184,25 +172,10 @@ class WebViewManager(
             override fun onPageCommitVisible(view: WebView?, url: String?) {
                 super.onPageCommitVisible(view, url)
             }
-
-            override fun onReceivedHttpAuthRequest(
-                view: WebView?, request: HttpAuthResponse?, host: String?, realm: String?
-            ): Boolean = false
         }
     }
 
     private fun createWebChromeClient(tabId: Int): WebChromeClient {
-        return object : WebChromeClient() {
-            override fun onCreatedWindow(webView: WebView?): Boolean {
-                if (settingsRepo.config.value.blockPopups) return false
-                return super.onCreatedWindow(webView)
-            }
-
-            override fun onShowFileChooser(
-                webView: WebView?,
-                filePathCallback: ValueCallback<Array<Uri>>?,
-                fileChooserParams: FileChooserParams?
-            ): Boolean = false
-        }
+        return WebChromeClient()
     }
 }
