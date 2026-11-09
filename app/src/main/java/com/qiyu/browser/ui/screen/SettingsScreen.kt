@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.qiyu.browser.viewmodel.SettingsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -200,13 +201,12 @@ private fun SettingsHomePageRow(
         Icon(Icons.Default.Home, "", modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.width(8.dp))
-        BasicTextField(
+        OutlinedTextField(
             value = input,
             onValueChange = { input = it },
             singleLine = true,
-            modifier = Modifier.weight(1f),
-            textStyle = MaterialTheme.typography.bodyMedium,
-            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
+            placeholder = { Text("Home page URL") },
+            modifier = Modifier.weight(1f)
         )
         Text(
             "Save",
