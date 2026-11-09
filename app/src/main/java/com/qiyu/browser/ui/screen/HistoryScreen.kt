@@ -22,6 +22,7 @@ import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.HistoryViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
@@ -83,20 +84,17 @@ fun HistoryScreen(
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
-                BasicTextField(
+                OutlinedTextField(
                     value = searchInput,
                     onValueChange = {
                         searchInput = it
                         viewModel.setSearchQuery(it)
                     },
                     singleLine = true,
+                    placeholder = { Text("Search") },
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(
-                        MaterialTheme.colorScheme.primary
-                    )
+                        .padding(horizontal = 8.dp)
                 )
             }
 
