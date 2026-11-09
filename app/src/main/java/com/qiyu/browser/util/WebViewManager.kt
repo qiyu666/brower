@@ -1,0 +1,208 @@
+package com.qiyu.browser.util
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.*
+import android.widget.FrameLayout
+import com.qiyu.browser.data.repository.SettingsRepository
+import com.qiyu.browser.model.BrowserConfig
+
+interface WebViewListener {
+    fun onPageStarted(tabId: Int, url: String)
+    fun onPageFinished(tabId: Int, title: String, url: String)
+    fun onProgressChanged(tabId: Int, progress: Int)
+    fun onNewPage(tabId: Int, url: String)
+    fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?)
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+class WebViewManager(
+    private val context: Context,
+    private val settingsRepo: SettingsRepository,
+    private val listener: WebViewListener
+) {
+
+    val container = FrameLayout(context)
+    private val webViews = mutableMapOf<Int, WebView>()
+
+    fun createWebView(tabId: Int, incognito: Boolean): WebView {
+        val config = settingsRepo.config.value
+        val webView = WebView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            isVerticalScrollBarEnabled = true
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                databaseEnabled = true
+                setSupportZoom(false)
+                builtInZoomControls = false
+                useWideViewPort = true
+                loadWithOverviewMode = true
+                textZoom = config.fontSize
+                cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.DEFAULT_CACHE_MODE
+                @Suppress("DEPRECATION")
+                mediaPlaybackRequiresUserGesture = !config.autoPlayVideos
+                if (config.blockPopups) {
+                    setSupportMultipleWindows(false)
+                }
+            }
+            webViewClient = createWebViewClient(tabId)
+            webChromeClient = createWebChromeClient(tabId)
+            setDownloadListener { url, _, _, mimeType, _ ->
+                val fileName = WebUtils.getFileNameFromUrl(url)
+                listener.onDownloadRequested(tabId, url, fileName, mimeType)
+            }
+            visibility = View.GONE
+            loadUrl("about:blank")
+        }
+        container.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        webViews[tabId] = webView
+        return webView
+    }
+
+    fun getWebView(tabId: Int): WebView? = webViews[tabId]
+
+    fun showTab(tabId: Int) {
+        webViews.forEach { (id, view) ->
+            view.visibility = if (id == tabId) View.VISIBLE else View.GONE
+        }
+    }
+
+    fun destroyWebView(tabId: Int) {
+        webViews.remove(tabId)?.let {
+            it.stopLoading()
+            it.loadUrl("about:blank")
+            container.removeView(it)
+            it.destroy()
+        }
+    }
+
+    fun destroyAll() {
+        webViews.values.forEach {
+            it.stopLoading()
+            it.loadUrl("about:blank")
+            container.removeView(it)
+            it.destroy()
+        }
+        webViews.clear()
+    }
+
+    fun refresh(tabId: Int) {
+        webViews[tabId]?.reload()
+    }
+
+    fun goBack(tabId: Int): Boolean {
+        val webView = webViews[tabId] ?: return false
+        if (webView.canGoBack()) {
+            webView.goBack()
+            return true
+        }
+        return false
+    }
+
+    fun goForward(tabId: Int): Boolean {
+        val webView = webViews[tabId] ?: return false
+        if (webView.canGoForward()) {
+            webView.goForward()
+            return true
+        }
+        return false
+    }
+
+    fun loadUrl(tabId: Int, url: String) {
+        webViews[tabId]?.loadUrl(url)
+    }
+
+    private fun createWebViewClient(tabId: Int): WebViewClient {
+        return object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?) {
+                super.onPageStarted(view, url)
+                listener.onPageStarted(tabId, url ?: "")
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
+            }
+
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                super.onProgressChanged(view, newProgress)
+                listener.onProgressChanged(tabId, newProgress)
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                if (request?.url != null) {
+                    val scheme = request.url?.scheme ?: ""
+                    return when (scheme) {
+                        "http", "https" -> false
+                        "mailto" -> {
+                            try { context.startActivity(Intent(Intent.ACTION_SENDTO, request.url)) } catch (e: Exception) {}
+                            true
+                        }
+                        "tel" -> {
+                            try { context.startActivity(Intent(Intent.ACTION_DIAL, request.url)) } catch (e: Exception) {}
+                            true
+                        }
+                        "intent" -> {
+                            try {
+                                context.startActivity(
+                                    Intent.parseUri(request.url.toString(), Intent.URI_INTENT_SCHEME)
+                                )
+                            } catch (e: Exception) {}
+                            true
+                        }
+                        else -> {
+                            try { context.startActivity(Intent(Intent.ACTION_VIEW, request.url)) } catch (e: Exception) {}
+                            true
+                        }
+                    }
+                }
+                return true
+            }
+
+            @Deprecated("Deprecated in API 29")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url != null) {
+                    val scheme = Uri.parse(url).scheme ?: ""
+                    if (scheme == "http" || scheme == "https") return false
+                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) {}
+                    return true
+                }
+                return false
+            }
+
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+            }
+
+            override fun onReceivedHttpAuthRequest(
+                view: WebView?, request: HttpAuthResponse?, host: String?, realm: String?
+            ): Boolean = false
+        }
+    }
+
+    private fun createWebChromeClient(tabId: Int): WebChromeClient {
+        return object : WebChromeClient() {
+            override fun onCreatedWindow(webView: WebView?): Boolean {
+                if (settingsRepo.config.value.blockPopups) return false
+                return super.onCreatedWindow(webView)
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean = false
+        }
+    }
+}
