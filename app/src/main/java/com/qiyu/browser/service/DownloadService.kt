@@ -7,6 +7,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.qiyu.browser.NovaBrowserApp
 import com.qiyu.browser.model.DownloadItem
