@@ -2,6 +2,7 @@ package com.qiyu.browser.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.qiyu.browser.NovaBrowserApp
 import com.qiyu.browser.model.Bookmark
 import com.qiyu.browser.model.HistoryItem
