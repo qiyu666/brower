@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,26 +79,17 @@ fun AddressBar(
                 modifier = Modifier.padding(start = 8.dp).size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-            BasicTextField(
+            OutlinedTextField(
                 value = inputText,
                 onValueChange = {
                     inputText = it
                     isEditing = it != url
                 },
                 singleLine = true,
+                placeholder = { Text("Search or type URL") },
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 8.dp),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textDecoration = androidx.compose.ui.text.TextDecoration.None
-                ),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(
-                    MaterialTheme.colorScheme.primary
-                ),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Go
-                )
+                    .padding(horizontal = 8.dp)
             )
         }
 
