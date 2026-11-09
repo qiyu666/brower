@@ -3,6 +3,7 @@ package com.qiyu.browser.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewModelScope
 import com.qiyu.browser.model.TabItem
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
