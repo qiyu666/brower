@@ -18,7 +18,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Globe
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
 import com.qiyu.browser.ui.component.AddressBar
