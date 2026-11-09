@@ -24,6 +24,7 @@ import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.BookmarksViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookmarksScreen(
     viewModel: BookmarksViewModel,
@@ -76,23 +77,17 @@ fun BookmarksScreen(
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
-                    BasicTextField(
+                    OutlinedTextField(
                         value = searchInput,
                         onValueChange = {
                             searchInput = it
                             viewModel.setSearchQuery(it)
                         },
                         singleLine = true,
+                        placeholder = { Text("Search") },
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            imeAction = ImeAction.Search
-                        ),
-                        cursorBrush = androidx.compose.ui.graphics.SolidColor(
-                            MaterialTheme.colorScheme.primary
-                        )
+                            .padding(horizontal = 8.dp)
                     )
                     if (searchInput.isNotEmpty()) {
                         Text(
