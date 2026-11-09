@@ -63,15 +63,14 @@ fun NewTabPage(
                 modifier = Modifier.padding(horizontal = 12.dp).size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
-            BasicTextField(
+            OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
                 singleLine = true,
+                placeholder = { Text("Search or type URL") },
                 modifier = Modifier
                     .weight(1f)
-                    .padding(vertical = 8.dp),
-                textStyle = MaterialTheme.typography.bodyLarge,
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
+                    .padding(vertical = 8.dp)
             )
             if (searchText.isNotEmpty()) {
                 Text(
