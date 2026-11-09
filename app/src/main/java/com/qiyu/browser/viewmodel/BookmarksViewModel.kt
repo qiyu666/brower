@@ -23,12 +23,6 @@ class BookmarksViewModel(application: Application) : AndroidViewModel(applicatio
 
     val isBookmarked: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
-    init {
-        viewModelScope.launch {
-            _searchQuery.flatMapLatest { } // keep flow alive
-        }
-    }
-
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
