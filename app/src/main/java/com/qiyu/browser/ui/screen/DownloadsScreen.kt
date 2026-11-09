@@ -21,6 +21,7 @@ import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.DownloadsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadsScreen(
     viewModel: DownloadsViewModel,
