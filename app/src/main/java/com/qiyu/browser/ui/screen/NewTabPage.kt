@@ -78,8 +78,7 @@ fun NewTabPage(
                         onUrlClick(searchText.trim())
                         searchText = ""
                     },
-                    modifier = Modifier
-                        .padding(end = 8.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Text("Go")
                 }
