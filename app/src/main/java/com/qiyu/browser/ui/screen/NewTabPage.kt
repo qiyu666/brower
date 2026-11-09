@@ -73,17 +73,16 @@ fun NewTabPage(
                     .padding(vertical = 8.dp)
             )
             if (searchText.isNotEmpty()) {
-                Text(
-                    text = "Go",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                Button(
+                    onClick = {
+                        onUrlClick(searchText.trim())
+                        searchText = ""
+                    },
                     modifier = Modifier
-                        .padding(end = 16.dp, vertical = 8.dp)
-                        .clickable {
-                            onUrlClick(searchText.trim())
-                            searchText = ""
-                        }
-                )
+                        .padding(end = 8.dp, vertical = 8.dp)
+                ) {
+                    Text("Go")
+                }
             }
         }
 
