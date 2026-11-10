@@ -23,6 +23,8 @@ class SettingsRepository(private val context: Context) {
     fun setDataSaver(enabled: Boolean) = updateConfig { it.copy(dataSaver = enabled) }
     fun setAutoPlayVideos(enabled: Boolean) = updateConfig { it.copy(autoPlayVideos = enabled) }
     fun setBlockPopups(enabled: Boolean) = updateConfig { it.copy(blockPopups = enabled) }
+    fun setLanguage(lang: String) = updateConfig { it.copy(language = lang) }
+    fun setSearchEngine(engine: String) = updateConfig { it.copy(searchEngine = engine) }
 
     private fun loadConfig(): BrowserConfig {
         return BrowserConfig(
@@ -32,7 +34,8 @@ class SettingsRepository(private val context: Context) {
             darkMode = prefs.getBoolean("dark_mode", false),
             dataSaver = prefs.getBoolean("data_saver", false),
             autoPlayVideos = prefs.getBoolean("auto_play", false),
-            blockPopups = prefs.getBoolean("block_popups", true)
+            blockPopups = prefs.getBoolean("block_popups", true),
+            language = prefs.getString("language", "en") ?: "en"
         )
     }
 
@@ -45,6 +48,7 @@ class SettingsRepository(private val context: Context) {
             putBoolean("data_saver", config.dataSaver)
             putBoolean("auto_play", config.autoPlayVideos)
             putBoolean("block_popups", config.blockPopups)
+            putString("language", config.language)
         }.apply()
     }
 }
