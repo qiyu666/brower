@@ -77,4 +77,7 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+
+    // Coil
+    implementation(libs.coil.compose)
 }
