@@ -34,6 +34,9 @@ class WebViewManager(
         val webView = WebView(context).apply {
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = true
+            if (config.darkMode) {
+                setBackgroundColor(0xFF1E1E1E.toInt())
+            }
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -48,6 +51,10 @@ class WebViewManager(
                 mediaPlaybackRequiresUserGesture = !config.autoPlayVideos
                 if (config.blockPopups) {
                     setSupportMultipleWindows(false)
+                }
+                if (config.darkMode && android.os.Build.VERSION.SDK_INT >= 28) {
+                    @Suppress("DEPRECATION")
+                    forceDark = WebSettings.FORCE_DARK_ON
                 }
             }
             webViewClient = createWebViewClient(tabId)
@@ -95,6 +102,17 @@ class WebViewManager(
             it.destroy()
         }
         webViews.clear()
+    }
+
+    fun applyDarkMode(dark: Boolean) {
+        webViews.forEach { (tabId, webView) ->
+            webView.setBackgroundColor(if (dark) 0xFF1E1E1E.toInt() else 0xFFFFFFFF.toInt())
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                @Suppress("DEPRECATION")
+                webView.settings.forceDark = if (dark) WebSettings.FORCE_DARK_ON else WebSettings.FORCE_DARK_OFF
+            }
+            webView.reload()
+        }
     }
 
     fun refresh(tabId: Int) {
