@@ -8,6 +8,7 @@ lifecycle = "2.8.6"
 room = "2.6.1"
 navigationCompose = "2.7.7"
 coroutines = "1.9.0"
+coil = "2.7.0"
 
 [libraries]
 # Compose
@@ -38,6 +39,9 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 
 # Coroutines
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Coil
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
