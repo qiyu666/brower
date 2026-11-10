@@ -3,10 +3,14 @@ package com.qiyu.browser.ui.screen
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ViewGrid
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +53,7 @@ fun BrowserScreen(
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
+    var showTabSwitcher by remember { mutableStateOf(false) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
 
@@ -201,6 +206,7 @@ fun BrowserScreen(
                 }
             },
             tabCount = tabs.size,
+            onTabSwitcher = { showTabSwitcher = true },
             onMenu = {
                 // TODO: open menu dialog
             },
@@ -227,6 +233,134 @@ fun BrowserScreen(
                 bookmarksVM.checkBookmarked(url)
             } else {
                 bookmarksVM.checkBookmarked("")
+            }
+        }
+    }
+
+    // Tab Switcher Overlay
+    if (showTabSwitcher) {
+        TabSwitcherOverlay(
+            tabs = tabs,
+            activeTabId = activeTab?.id,
+            onSelect = { tabId ->
+                tabsVM.switchTab(tabId)
+                webManager.showTab(tabId)
+                showTabSwitcher = false
+            },
+            onClose = { tabId ->
+                tabsVM.closeTab(tabId)
+                webManager.destroyWebView(tabId)
+                if (tabsVM.tabs.value.isEmpty()) showTabSwitcher = false
+            },
+            onNewTab = {
+                val tabId = tabsVM.addTab()
+                webManager.createWebView(tabId, false)
+                webManager.showTab(tabId)
+                showTabSwitcher = false
+            },
+            onDismiss = { showTabSwitcher = false }
+        )
+    }
+}
+
+@Composable
+fun TabSwitcherOverlay(
+    tabs: List<com.qiyu.browser.model.TabItem>,
+    activeTabId: Int?,
+    onSelect: (Int) -> Unit,
+    onClose: (Int) -> Unit,
+    onNewTab: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF1E1E1E))
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.ViewGrid, "",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "标签页 (${})".format(tabs.size),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, "关闭", tint = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+
+        // Tab grid
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp)
+        ) {
+            items(tabs, key = { it.id }) { tab ->
+                val isActive = tab.id == activeTabId
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    else MaterialTheme.colorScheme.surface,
+                    border = if (isActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { onSelect(tab.id) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Tab content
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                maxLines = 1
+                            )
+                        }
+                        // Close button
+                        IconButton(onClick = { onClose(tab.id) }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, "", modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        }
+                    }
+                }
+            }
+
+            // New tab button
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable { onNewTab() }
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.Add, "", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Spacer(Modifier.width(8.dp))
+                    Text("新标签页", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
             }
         }
     }
