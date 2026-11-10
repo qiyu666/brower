@@ -68,9 +68,13 @@ fun BrowserScreen(
                     webManager.destroyWebView(it)
                 },
                 onNewTab = {
-                    val tabId = tabsVM.addTab()
+                    val homeUrl = config.homePage
+                    val tabId = tabsVM.addTab(homeUrl)
                     webManager.createWebView(tabId, false)
                     webManager.showTab(tabId)
+                    if (homeUrl.isNotEmpty() && homeUrl != "about:blank") {
+                        webManager.loadUrl(tabId, homeUrl)
+                    }
                 },
                 modifier = Modifier
             )
@@ -155,7 +159,8 @@ fun BrowserScreen(
 
         // Content area
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            val showNewTab = activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank"
+            val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
+                && (config.homePage.isEmpty() || config.homePage == "about:blank")
             if (showNewTab) {
                 NewTabPage(
                     recentItems = historyVM.historyItems.value.take(10),
