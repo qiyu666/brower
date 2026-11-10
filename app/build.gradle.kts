@@ -9,6 +9,15 @@ android {
     namespace = "com.qiyu.browser"
     compileSdk = 34
 
+    signingConfigs {
+        create("qiyu") {
+            storeFile = file("qiyu-debug.keystore")
+            storePassword = "qiyu1234"
+            keyAlias = "qiyu"
+            keyPassword = "qiyu1234"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.qiyu.browser"
         minSdk = 26
@@ -18,6 +27,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("qiyu")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
