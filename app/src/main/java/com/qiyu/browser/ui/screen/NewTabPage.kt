@@ -99,7 +99,12 @@ fun NewTabPage(
                         .padding(start = 20.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { doSearch() }),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { doSearch() },
+                        onDone = { doSearch() },
+                        onGo = { doSearch() },
+                        onSend = { doSearch() }
+                    ),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
                     decorationBox = { inner ->
                         if (query.isEmpty()) {
