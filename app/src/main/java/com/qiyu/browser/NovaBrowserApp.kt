@@ -6,6 +6,7 @@ import com.qiyu.browser.data.repository.BookmarkRepository
 import com.qiyu.browser.data.repository.DownloadRepository
 import com.qiyu.browser.data.repository.HistoryRepository
 import com.qiyu.browser.data.repository.SettingsRepository
+import com.qiyu.browser.util.AppStrings
 
 class NovaBrowserApp : Application() {
 
@@ -22,5 +23,6 @@ class NovaBrowserApp : Application() {
         historyRepository = HistoryRepository(database.historyDao())
         downloadRepository = DownloadRepository(database.downloadDao())
         settingsRepository = SettingsRepository(this)
+        AppStrings.setLanguage(settingsRepository.config.value.language)
     }
 }
