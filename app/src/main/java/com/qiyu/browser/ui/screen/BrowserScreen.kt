@@ -181,13 +181,31 @@ fun BrowserScreen(
 
         // Bottom nav
         BottomNav(
-            onBookmarks = onNavigateToBookmarks,
-            onHistory = onNavigateToHistory,
-            onDownloads = onNavigateToDownloads,
-            onSettings = onNavigateToSettings,
-            onShare = {
-                activeTab?.let { onShare(it.url, it.title) }
-            }
+            onBack = {
+                activeTab?.let { tab ->
+                    webManager.goBack(tab.id)
+                }
+            },
+            onForward = {
+                activeTab?.let { tab ->
+                    webManager.goForward(tab.id)
+                }
+            },
+            onNewTab = {
+                val homeUrl = config.homePage
+                val tabId = tabsVM.addTab(homeUrl)
+                webManager.createWebView(tabId, false)
+                webManager.showTab(tabId)
+                if (homeUrl.isNotEmpty() && homeUrl != "about:blank") {
+                    webManager.loadUrl(tabId, homeUrl)
+                }
+            },
+            tabCount = tabs.size,
+            onMenu = {
+                // TODO: open menu dialog
+            },
+            canGoBack = activeTab?.canGoBack ?: false,
+            canGoForward = activeTab?.canGoForward ?: false
         )
     }
 
