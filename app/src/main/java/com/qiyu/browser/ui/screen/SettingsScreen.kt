@@ -5,23 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Gesture
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.viewmodel.SettingsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -33,6 +25,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
+    var homeInput by remember { mutableStateOf(config.homePage) }
+    var engineDialog by remember { mutableStateOf(false) }
+    var langDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -48,7 +43,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    "Settings",
+                    AppStrings.t("settings"),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface
@@ -63,77 +58,160 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            // Language
+            SectionTitle(AppStrings.t("language"))
+            SettingRow(
+                title = AppStrings.t("language"),
+                value = if (config.language == "zh") "中文" else "English",
+                onClick = { langDialog = true }
+            )
+
+            // Search engine
+            SectionTitle(AppStrings.t("search_engine"))
+            SettingRow(
+                title = AppStrings.t("search_engine"),
+                value = config.searchEngine.replaceFirstChar { it.uppercase() },
+                onClick = { engineDialog = true }
+            )
+
             // Appearance
-            SectionTitle("Appearance")
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle(AppStrings.t("appearance"))
 
             SettingRow(
                 icon = { Icon(Icons.Default.DarkMode, "", modifier = Modifier.size(20.dp)) },
-                title = "Dark Mode",
-                value = if (config.darkMode) "On" else "Off"
+                title = AppStrings.t("dark_mode"),
+                value = if (config.darkMode) AppStrings.t("on") else AppStrings.t("off")
             ) {
                 viewModel.setDarkMode(!config.darkMode)
             }
 
             SettingRow(
                 icon = { Icon(Icons.Default.TextFields, "", modifier = Modifier.size(20.dp)) },
-                title = "Font Size",
+                title = AppStrings.t("font_size"),
                 value = "${config.fontSize}%"
             ) {
                 val sizes = listOf(75, 85, 100, 115, 125, 150)
-                val currentIndex = sizes.indexOf(config.fontSize).coerceAtLeast(0)
-                val newSize = sizes[(currentIndex + 1) % sizes.size]
-                viewModel.setFontSize(newSize)
+                val idx = sizes.indexOf(config.fontSize).coerceAtLeast(0)
+                viewModel.setFontSize(sizes[(idx + 1) % sizes.size])
             }
 
             // Behavior
             Spacer(modifier = Modifier.height(16.dp))
-            SectionTitle("Behavior")
+            SectionTitle(AppStrings.t("behavior"))
 
             SettingRow(
                 icon = { Icon(Icons.Default.Gesture, "", modifier = Modifier.size(20.dp)) },
-                title = "Data Saver",
-                value = if (config.dataSaver) "On" else "Off"
+                title = AppStrings.t("data_saver"),
+                value = if (config.dataSaver) AppStrings.t("on") else AppStrings.t("off")
             ) {
                 viewModel.setDataSaver(!config.dataSaver)
             }
 
             SettingRow(
                 icon = { Icon(Icons.Default.PlayCircle, "", modifier = Modifier.size(20.dp)) },
-                title = "Auto-play Videos",
-                value = if (config.autoPlayVideos) "On" else "Off"
+                title = AppStrings.t("auto_play"),
+                value = if (config.autoPlayVideos) AppStrings.t("on") else AppStrings.t("off")
             ) {
                 viewModel.setAutoPlayVideos(!config.autoPlayVideos)
             }
 
             SettingRow(
                 icon = { Icon(Icons.Default.Shield, "", modifier = Modifier.size(20.dp)) },
-                title = "Block Popups",
-                value = if (config.blockPopups) "On" else "Off"
+                title = AppStrings.t("block_popups"),
+                value = if (config.blockPopups) AppStrings.t("on") else AppStrings.t("off")
             ) {
                 viewModel.setBlockPopups(!config.blockPopups)
             }
 
-            // Home page
+            // Homepage
             Spacer(modifier = Modifier.height(16.dp))
-            SectionTitle("Homepage")
+            SectionTitle(AppStrings.t("homepage"))
 
-            SettingsHomePageRow(
-                currentUrl = config.homePage,
-                onSave = { viewModel.setHomePage(it) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Home, "", modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = homeInput,
+                    onValueChange = { homeInput = it },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    AppStrings.t("save"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { if (homeInput.isNotEmpty()) viewModel.setHomePage(homeInput) }
+                        .padding(8.dp)
+                )
+            }
 
             // About
             Spacer(modifier = Modifier.height(16.dp))
-            SectionTitle("About")
-
-            SettingRow(
-                icon = {},
-                title = "Version",
-                value = "1.0.0"
-            ) {}
-
+            SectionTitle(AppStrings.t("about"))
+            SettingRow(icon = {}, title = AppStrings.t("version"), value = "1.0.0") {}
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    // Search engine dialog
+    if (engineDialog) {
+        AlertDialog(
+            onDismissRequest = { engineDialog = false },
+            title = { Text(AppStrings.t("search_engine")) },
+            text = {
+                Column {
+                    listOf("google" to "Google", "bing" to "Bing", "duckduckgo" to "DuckDuckGo", "baidu" to "Baidu").forEach { (code, name) ->
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setSearchEngine(code)
+                                    engineDialog = false
+                                }
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Language dialog
+    if (langDialog) {
+        AlertDialog(
+            onDismissRequest = { langDialog = false },
+            title = { Text(AppStrings.t("language")) },
+            text = {
+                Column {
+                    listOf("en" to "English", "zh" to "中文").forEach { (code, name) ->
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setLanguage(code)
+                                    langDialog = false
+                                }
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
     }
 }
 
@@ -149,7 +227,7 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun SettingRow(
-    icon: @Composable () -> Unit,
+    icon: @Composable () -> Unit = {},
     title: String,
     value: String,
     onClick: () -> Unit
@@ -158,65 +236,16 @@ private fun SettingRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(
-                MaterialTheme.colorScheme.surface,
-                RoundedCornerShape(8.dp)
-            )
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         icon()
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            title,
-            style = MaterialTheme.typography.bodyMedium,
+        if (icon != {}) Spacer(modifier = Modifier.width(12.dp))
+        Text(title, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
-private fun SettingsHomePageRow(
-    currentUrl: String,
-    onSave: (String) -> Unit
-) {
-    var input by remember { mutableStateOf(currentUrl) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surface,
-                RoundedCornerShape(8.dp)
-            )
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Default.Home, "", modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-        Spacer(modifier = Modifier.width(8.dp))
-        OutlinedTextField(
-            value = input,
-            onValueChange = { input = it },
-            singleLine = true,
-            placeholder = { Text("Home page URL") },
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            "Save",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clickable {
-                    if (input.isNotEmpty()) onSave(input)
-                }
-                .padding(8.dp)
-        )
+            color = MaterialTheme.colorScheme.onSurface)
+        Text(value, style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary)
     }
 }
