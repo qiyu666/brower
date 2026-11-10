@@ -81,9 +81,19 @@ fun SettingsScreen(
             SettingRow(
                 icon = { Icon(Icons.Default.DarkMode, "", modifier = Modifier.size(20.dp)) },
                 title = AppStrings.t("dark_mode"),
-                value = if (config.darkMode) AppStrings.t("on") else AppStrings.t("off")
+                value = when (config.darkMode) {
+                    "auto" -> "Auto"
+                    "dark" -> "Dark"
+                    else -> "Light"
+                }
             ) {
-                viewModel.setDarkMode(!config.darkMode)
+                // Cycle: auto -> light -> dark -> auto
+                val next = when (config.darkMode) {
+                    "auto" -> "light"
+                    "light" -> "dark"
+                    else -> "auto"
+                }
+                viewModel.setDarkMode(next)
             }
 
             SettingRow(
