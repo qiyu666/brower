@@ -235,15 +235,15 @@ fun BottomNav(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BottomNavItem(icon = { Icon(Icons.Default.Star, "Bookmarks", modifier = Modifier.size(20.dp)) },
-            label = "Marks", onClick = onBookmarks)
+            label = AppStrings.t("bookmarks"), onClick = onBookmarks)
         BottomNavItem(icon = { Icon(Icons.Default.Search, "History", modifier = Modifier.size(20.dp)) },
-            label = "History", onClick = onHistory)
+            label = AppStrings.t("history"), onClick = onHistory)
         BottomNavItem(icon = { Icon(Icons.Default.Add, "Downloads", modifier = Modifier.size(20.dp)) },
-            label = "DL", onClick = onDownloads)
+            label = AppStrings.t("downloads"), onClick = onDownloads)
         BottomNavItem(icon = { Icon(Icons.Default.Refresh, "Share", modifier = Modifier.size(20.dp)) },
-            label = "Share", onClick = onShare)
+            label = AppStrings.t("share"), onClick = onShare)
         BottomNavItem(icon = { Icon(Icons.Default.Close, "Settings", modifier = Modifier.size(20.dp)) },
-            label = "Settings", onClick = onSettings)
+            label = AppStrings.t("settings"), onClick = onSettings)
     }
 }
 
