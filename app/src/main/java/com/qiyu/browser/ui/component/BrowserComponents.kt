@@ -26,6 +26,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.qiyu.browser.model.TabItem
+import com.qiyu.browser.util.AppStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
