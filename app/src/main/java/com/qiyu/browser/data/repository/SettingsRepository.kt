@@ -28,7 +28,7 @@ class SettingsRepository(private val context: Context) {
 
     private fun loadConfig(): BrowserConfig {
         return BrowserConfig(
-            homePage = prefs.getString("home_page", "https://www.google.com") ?: "https://www.google.com",
+            homePage = prefs.getString("home_page", "") ?: "",
             searchEngine = prefs.getString("search_engine", "google") ?: "google",
             fontSize = prefs.getInt("font_size", 100),
             darkMode = prefs.getString("dark_mode", "auto") ?: "auto",
