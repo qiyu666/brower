@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewModelScope
 import com.qiyu.browser.model.TabItem
+import com.qiyu.browser.util.AppStrings
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -32,7 +33,7 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addTab(url: String = "", incognito: Boolean = false): Int {
         val id = nextTabId++
-        val title = if (url.isEmpty()) "New Tab" else url
+        val title = if (url.isEmpty()) AppStrings.t("new_tab") else url
         _tabs.update { it + TabItem(id = id, url = url, title = title, isIncognito = incognito) }
         _activeTabId.value = id
         return id
