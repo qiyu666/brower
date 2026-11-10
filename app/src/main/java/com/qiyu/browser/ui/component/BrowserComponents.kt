@@ -22,9 +22,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.input.ImeAction
 import com.qiyu.browser.model.TabItem
 import com.qiyu.browser.util.AppStrings
 
@@ -87,7 +90,13 @@ fun AddressBar(
                     isEditing = it != url
                 },
                 singleLine = true,
-                placeholder = { Text("Search or type URL") },
+                placeholder = { Text(AppStrings.t("search_or_type_url")) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { if (inputText.isNotBlank()) onUrlSubmit(inputText) },
+                    onDone = { if (inputText.isNotBlank()) onUrlSubmit(inputText) },
+                    onGo = { if (inputText.isNotBlank()) onUrlSubmit(inputText) }
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp)
