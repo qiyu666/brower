@@ -1,189 +1,132 @@
 package com.qiyu.browser.ui.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.qiyu.browser.model.HistoryItem
-import com.qiyu.browser.util.WebUtils
+import androidx.compose.foundation.clickable
+import coil.compose.AsyncImage
+import com.qiyu.browser.util.AppStrings
 
 @Composable
 fun NewTabPage(
-    recentItems: List<HistoryItem>,
-    onUrlClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    searchEngine: String = "google"
 ) {
-    var searchText by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf("") }
+    var focused by remember { mutableStateOf(false) }
+    val isDark = isSystemInDarkTheme()
 
-    Column(
+    val bgColor = if (isDark) Color.Black else Color.White
+    val inputBg = if (isDark) Color.Black else Color.White
+    val inputBorder = if (isDark) Color(0xFF5F5F5F) else Color(0xFFDFE1E5)
+    val inputBorderFocus = Color(0xFF8AB4F8)
+    val iconColor = if (isDark) Color(0xFF9AA0A6) else Color(0xFF5F6368)
+    val textColor = if (isDark) Color(0xFFE8EAED) else Color(0xFF202124)
+
+    fun buildSearch(q: String): String = when (searchEngine) {
+        "google" -> "https://www.google.com/search?q=${q.replace(" ", "+")}"
+        "bing" -> "https://www.bing.com/search?q=${q.replace(" ", "+")}"
+        "duckduckgo" -> "https://duckduckgo.com/?q=${q.replace(" ", "+")}"
+        "baidu" -> "https://www.baidu.com/s?wd=${q.replace(" ", "+")}"
+        else -> "https://www.google.com/search?q=${q.replace(" ", "+")}"
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(bgColor),
+        contentAlignment = Alignment.Center
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // App icon / name
-        Text(
-            "Nova Browser",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Search bar
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
-                .padding(4.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(40.dp)
         ) {
-            Icon(
-                Icons.Default.Search, "",
-                modifier = Modifier.padding(horizontal = 12.dp).size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            )
-            OutlinedTextField(
-                value = searchText,
-                onValueChange = { searchText = it },
-                singleLine = true,
-                placeholder = { Text("Search or type URL") },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 8.dp)
-            )
-            if (searchText.isNotEmpty()) {
-                Button(
-                    onClick = {
-                        onUrlClick(searchText.trim())
-                        searchText = ""
-                    },
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Text("Go")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Quick links
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            QuickLink("Google", "https://www.google.com", onUrlClick)
-            QuickLink("Wikipedia", "https://www.wikipedia.org", onUrlClick)
-            QuickLink("GitHub", "https://github.com", onUrlClick)
-            QuickLink("YouTube", "https://www.youtube.com", onUrlClick)
-        }
-
-        // Recent items
-        if (recentItems.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                "Recent",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.Start)
+            // Logo
+            AsyncImage(
+                model = "https://www.gstatic.com/android/external_chrome/dynamic_color/img/logo_g_color_2x.png",
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                contentScale = ContentScale.Fit
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Column(
+            // Search box
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(inputBg)
+                    .border(
+                        width = 1.dp,
+                        color = if (focused) inputBorderFocus else inputBorder,
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .clickable { focused = true },
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                recentItems.forEach { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onUrlClick(item.url) }
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.History, "",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                item.title.ifEmpty { WebUtils.extractDomain(item.url) },
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                WebUtils.extractDomain(item.url),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = {
                         Text(
-                            WebUtils.formatTime(item.visitTime),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
+                            color = iconColor.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.bodyMedium
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickLink(
-    label: String,
-    url: String,
-    onUrlClick: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .clickable { onUrlClick(url) }
-            .padding(4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.size(56.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    label.take(1),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(start = 20.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    onKeyboardAction = {
+                        if (query.isNotBlank()) {
+                            val url = if (query.startsWith("http://") || query.startsWith("https://"))
+                                query
+                            else
+                                buildSearch(query)
+                            onNavigate(url)
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedLabelColor = Color.Transparent,
+                        unfocusedLabelColor = Color.Transparent,
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor)
+                )
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .size(20.dp)
                 )
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
     }
 }
