@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
                 val wv = webManager.getWebView(tabId)
                 tabsVM.updateTabState(
                     tabId = tabId,
-                    title = title,
+                    title = if (title.isEmpty() || title == "about:blank") "" else title,
                     url = url,
                     canGoBack = wv?.canGoBack() ?: false,
                     canGoForward = wv?.canGoForward() ?: false,
