@@ -1,12 +1,15 @@
 package com.qiyu.browser.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -19,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
@@ -229,11 +233,13 @@ fun TabStrip(
 
 @Composable
 fun BottomNav(
-    onBookmarks: () -> Unit,
-    onHistory: () -> Unit,
-    onDownloads: () -> Unit,
-    onSettings: () -> Unit,
-    onShare: () -> Unit,
+    onBack: () -> Unit,
+    onForward: () -> Unit,
+    onNewTab: () -> Unit,
+    tabCount: Int,
+    onMenu: () -> Unit,
+    canGoBack: Boolean = false,
+    canGoForward: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -244,16 +250,51 @@ fun BottomNav(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem(icon = { Icon(Icons.Default.Star, "Bookmarks", modifier = Modifier.size(20.dp)) },
-            label = AppStrings.t("bookmarks"), onClick = onBookmarks)
-        BottomNavItem(icon = { Icon(Icons.Default.Search, "History", modifier = Modifier.size(20.dp)) },
-            label = AppStrings.t("history"), onClick = onHistory)
-        BottomNavItem(icon = { Icon(Icons.Default.Add, "Downloads", modifier = Modifier.size(20.dp)) },
-            label = AppStrings.t("downloads"), onClick = onDownloads)
-        BottomNavItem(icon = { Icon(Icons.Default.Refresh, "Share", modifier = Modifier.size(20.dp)) },
-            label = AppStrings.t("share"), onClick = onShare)
-        BottomNavItem(icon = { Icon(Icons.Default.Close, "Settings", modifier = Modifier.size(20.dp)) },
-            label = AppStrings.t("settings"), onClick = onSettings)
+        // Back
+        IconButton(onClick = onBack, enabled = canGoBack, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.ArrowBack, "Back",
+                modifier = Modifier.size(24.dp),
+                tint = if (canGoBack) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+        }
+
+        // Forward
+        IconButton(onClick = onForward, enabled = canGoForward, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.ArrowForward, "Forward",
+                modifier = Modifier.size(24.dp),
+                tint = if (canGoForward) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+        }
+
+        // New tab
+        IconButton(onClick = onNewTab, modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Default.Add, "New Tab", modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurface)
+        }
+
+        // Tab count
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            modifier = Modifier.size(32.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "$tabCount",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        // Menu
+        IconButton(onClick = onMenu, modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Default.Menu, "Menu", modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurface)
+        }
     }
 }
 
