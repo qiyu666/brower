@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.qiyu.browser.R
 import com.qiyu.browser.util.AppStrings
 
 @Composable
@@ -69,11 +71,10 @@ fun NewTabPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(40.dp)
         ) {
-            AsyncImage(
-                model = "https://www.gstatic.com/android/external_chrome/dynamic_color/img/logo_g_color_2x.png",
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                contentScale = ContentScale.Fit
+                modifier = Modifier.size(72.dp)
             )
 
             Row(
