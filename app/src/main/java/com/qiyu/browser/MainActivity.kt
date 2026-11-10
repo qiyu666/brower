@@ -97,9 +97,13 @@ class MainActivity : ComponentActivity() {
         }
 
         if (tabsVM.tabs.value.isEmpty()) {
-            val tabId = tabsVM.addTab()
+            val homeUrl = (application as NovaBrowserApp).settingsRepository.config.value.homePage
+            val tabId = tabsVM.addTab(homeUrl)
             webManager.createWebView(tabId, false)
             webManager.showTab(tabId)
+            if (homeUrl.isNotEmpty() && homeUrl != "about:blank") {
+                webManager.loadUrl(tabId, homeUrl)
+            }
         }
 
         setContent {
