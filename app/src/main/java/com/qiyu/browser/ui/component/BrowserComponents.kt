@@ -237,6 +237,7 @@ fun BottomNav(
     onForward: () -> Unit,
     onNewTab: () -> Unit,
     tabCount: Int,
+    onTabSwitcher: () -> Unit,
     onMenu: () -> Unit,
     canGoBack: Boolean = false,
     canGoForward: Boolean = false,
@@ -278,7 +279,9 @@ fun BottomNav(
         Surface(
             shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier
+                .size(36.dp)
+                .clickable(onClick = onTabSwitcher),
             color = MaterialTheme.colorScheme.surface
         ) {
             Box(contentAlignment = Alignment.Center) {
