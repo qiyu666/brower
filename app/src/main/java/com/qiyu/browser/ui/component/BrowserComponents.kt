@@ -182,7 +182,7 @@ fun TabStrip(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = tab.title.ifEmpty { "New Tab" },
+                            text = if (tab.title.isEmpty() || tab.title == "about:blank") "New Tab" else tab.title,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
