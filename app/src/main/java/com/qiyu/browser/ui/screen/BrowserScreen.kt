@@ -193,6 +193,11 @@ fun BrowserScreen(
         )
     }
 
+    // Apply dark mode to all WebViews when it changes
+    LaunchedEffect(config.darkMode) {
+        webManager.applyDarkMode(config.darkMode)
+    }
+
     // Observe bookmark state for current tab
     LaunchedEffect(activeTab?.url) {
         activeTab?.url?.let { url ->
