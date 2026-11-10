@@ -1,7 +1,7 @@
 package com.qiyu.browser.model
 
 data class BrowserConfig(
-    val homePage: String = "https://www.google.com",
+    val homePage: String = "",
     val searchEngine: String = "google",
     val fontSize: Int = 100,
     val darkMode: String = "auto",
