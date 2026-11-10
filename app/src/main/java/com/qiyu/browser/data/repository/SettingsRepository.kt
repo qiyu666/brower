@@ -19,7 +19,7 @@ class SettingsRepository(private val context: Context) {
 
     fun setHomePage(url: String) = updateConfig { it.copy(homePage = url) }
     fun setFontSize(size: Int) = updateConfig { it.copy(fontSize = size) }
-    fun setDarkMode(enabled: Boolean) = updateConfig { it.copy(darkMode = enabled) }
+    fun setDarkMode(mode: String) = updateConfig { it.copy(darkMode = mode) }
     fun setDataSaver(enabled: Boolean) = updateConfig { it.copy(dataSaver = enabled) }
     fun setAutoPlayVideos(enabled: Boolean) = updateConfig { it.copy(autoPlayVideos = enabled) }
     fun setBlockPopups(enabled: Boolean) = updateConfig { it.copy(blockPopups = enabled) }
@@ -31,7 +31,7 @@ class SettingsRepository(private val context: Context) {
             homePage = prefs.getString("home_page", "https://www.google.com") ?: "https://www.google.com",
             searchEngine = prefs.getString("search_engine", "google") ?: "google",
             fontSize = prefs.getInt("font_size", 100),
-            darkMode = prefs.getBoolean("dark_mode", false),
+            darkMode = prefs.getString("dark_mode", "auto") ?: "auto",
             dataSaver = prefs.getBoolean("data_saver", false),
             autoPlayVideos = prefs.getBoolean("auto_play", false),
             blockPopups = prefs.getBoolean("block_popups", true),
@@ -44,7 +44,7 @@ class SettingsRepository(private val context: Context) {
             putString("home_page", config.homePage)
             putString("search_engine", config.searchEngine)
             putInt("font_size", config.fontSize)
-            putBoolean("dark_mode", config.darkMode)
+            putString("dark_mode", config.darkMode)
             putBoolean("data_saver", config.dataSaver)
             putBoolean("auto_play", config.autoPlayVideos)
             putBoolean("block_popups", config.blockPopups)
