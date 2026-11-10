@@ -19,7 +19,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setHomePage(url: String) = repo.setHomePage(url)
     fun setFontSize(size: Int) = repo.setFontSize(size)
-    fun setDarkMode(enabled: Boolean) = repo.setDarkMode(enabled)
+    fun setDarkMode(mode: String) = repo.setDarkMode(mode)
     fun setDataSaver(enabled: Boolean) = repo.setDataSaver(enabled)
     fun setAutoPlayVideos(enabled: Boolean) = repo.setAutoPlayVideos(enabled)
     fun setBlockPopups(enabled: Boolean) = repo.setBlockPopups(enabled)
