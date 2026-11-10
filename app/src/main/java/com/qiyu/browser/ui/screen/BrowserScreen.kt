@@ -290,7 +290,7 @@ fun TabSwitcherOverlay(
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
             Spacer(Modifier.width(8.dp))
             Text(
-                "标签页 (${})".format(tabs.size),
+                "标签页 (${tabs.size})",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
