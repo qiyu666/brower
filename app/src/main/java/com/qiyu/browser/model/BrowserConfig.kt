@@ -7,5 +7,6 @@ data class BrowserConfig(
     val darkMode: Boolean = false,
     val dataSaver: Boolean = false,
     val autoPlayVideos: Boolean = false,
-    val blockPopups: Boolean = true
+    val blockPopups: Boolean = true,
+    val language: String = "en"
 )
