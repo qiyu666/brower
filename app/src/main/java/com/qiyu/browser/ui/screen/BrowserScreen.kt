@@ -194,8 +194,14 @@ fun BrowserScreen(
     }
 
     // Apply dark mode to all WebViews when it changes
-    LaunchedEffect(config.darkMode) {
-        webManager.applyDarkMode(config.darkMode)
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDark = when (config.darkMode) {
+        "dark" -> true
+        "light" -> false
+        else -> systemDark
+    }
+    LaunchedEffect(isDark) {
+        webManager.applyDarkMode(isDark)
     }
 
     // Observe bookmark state for current tab
