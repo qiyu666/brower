@@ -163,15 +163,13 @@ fun BrowserScreen(
                 && (config.homePage.isEmpty() || config.homePage == "about:blank")
             if (showNewTab) {
                 NewTabPage(
-                    recentItems = historyVM.historyItems.value.take(10),
-                    onUrlClick = { url ->
+                    onNavigate = { url ->
                         activeTab?.let { tab ->
-                            val resolved = if (WebUtils.isUrl(url)) WebUtils.normalizeUrl(url)
-                            else WebUtils.buildSearchUrl(url, config.searchEngine)
-                            webManager.loadUrl(tab.id, resolved)
-                            tabsVM.updateTabState(tab.id, url = resolved, isLoading = true)
+                            webManager.loadUrl(tab.id, url)
+                            tabsVM.updateTabState(tab.id, url = url, isLoading = true)
                         }
-                    }
+                    },
+                    searchEngine = config.searchEngine
                 )
             } else {
                 AndroidView(
