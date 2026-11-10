@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -108,8 +109,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val config by settingsVM.config.collectAsStateWithLifecycle()
+            val systemDark = isSystemInDarkTheme()
+            val isDark = when (config.darkMode) {
+                "dark" -> true
+                "light" -> false
+                else -> systemDark
+            }
 
-            NovaBrowserTheme(darkMode = config.darkMode) {
+            NovaBrowserTheme(darkMode = isDark) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
