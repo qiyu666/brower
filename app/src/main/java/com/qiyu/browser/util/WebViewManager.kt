@@ -34,7 +34,7 @@ class WebViewManager(
         val webView = WebView(context).apply {
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = true
-            if (config.darkMode) {
+            if (config.darkMode == "dark" || (config.darkMode == "auto" && android.os.Build.VERSION.SDK_INT >= 29)) {
                 setBackgroundColor(0xFF1E1E1E.toInt())
             }
             settings.apply {
@@ -52,7 +52,10 @@ class WebViewManager(
                 if (config.blockPopups) {
                     setSupportMultipleWindows(false)
                 }
-                if (config.darkMode && android.os.Build.VERSION.SDK_INT >= 28) {
+                if (config.darkMode == "dark" && android.os.Build.VERSION.SDK_INT >= 28) {
+                    @Suppress("DEPRECATION")
+                    forceDark = WebSettings.FORCE_DARK_ON
+                } else if (config.darkMode == "auto" && android.os.Build.VERSION.SDK_INT >= 28) {
                     @Suppress("DEPRECATION")
                     forceDark = WebSettings.FORCE_DARK_ON
                 }
