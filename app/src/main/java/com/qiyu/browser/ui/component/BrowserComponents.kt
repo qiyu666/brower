@@ -42,11 +42,11 @@ fun AddressBar(
     onBookmarkToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var inputText by remember { mutableStateOf(url) }
+    var inputText by remember { mutableStateOf(if (url == "about:blank" || url.isEmpty()) "" else url) }
     var isEditing by remember { mutableStateOf(false) }
 
     LaunchedEffect(url) {
-        if (!isEditing) inputText = url
+        if (!isEditing) inputText = if (url == "about:blank" || url.isEmpty()) "" else url
     }
 
     Row(
