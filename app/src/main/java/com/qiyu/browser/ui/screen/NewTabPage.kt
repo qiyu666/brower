@@ -1,9 +1,12 @@
 package com.qiyu.browser.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -16,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import coil.compose.AsyncImage
 import com.qiyu.browser.util.AppStrings
 
@@ -27,13 +29,11 @@ fun NewTabPage(
     searchEngine: String = "google"
 ) {
     var query by remember { mutableStateOf("") }
-    var focused by remember { mutableStateOf(false) }
     val isDark = isSystemInDarkTheme()
 
     val bgColor = if (isDark) Color.Black else Color.White
-    val inputBg = if (isDark) Color.Black else Color.White
+    val inputBg = if (isDark) Color(0xFF1E1E1E) else Color(0xFFFAFAFA)
     val inputBorder = if (isDark) Color(0xFF5F5F5F) else Color(0xFFDFE1E5)
-    val inputBorderFocus = Color(0xFF8AB4F8)
     val iconColor = if (isDark) Color(0xFF9AA0A6) else Color(0xFF5F6368)
     val textColor = if (isDark) Color(0xFFE8EAED) else Color(0xFF202124)
 
@@ -43,6 +43,15 @@ fun NewTabPage(
         "duckduckgo" -> "https://duckduckgo.com/?q=${q.replace(" ", "+")}"
         "baidu" -> "https://www.baidu.com/s?wd=${q.replace(" ", "+")}"
         else -> "https://www.google.com/search?q=${q.replace(" ", "+")}"
+    }
+
+    fun doSearch() {
+        if (query.isBlank()) return
+        val url = if (query.startsWith("http://") || query.startsWith("https://"))
+            query
+        else
+            buildSearch(query)
+        onNavigate(url)
     }
 
     Box(
@@ -58,7 +67,6 @@ fun NewTabPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(40.dp)
         ) {
-            // Logo
             AsyncImage(
                 model = "https://www.gstatic.com/android/external_chrome/dynamic_color/img/logo_g_color_2x.png",
                 contentDescription = null,
@@ -66,7 +74,6 @@ fun NewTabPage(
                 contentScale = ContentScale.Fit
             )
 
-            // Search box
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,47 +82,32 @@ fun NewTabPage(
                     .background(inputBg)
                     .border(
                         width = 1.dp,
-                        color = if (focused) inputBorderFocus else inputBorder,
+                        color = inputBorder,
                         shape = RoundedCornerShape(24.dp)
-                    )
-                    .clickable { focused = true },
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
+                BasicTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = {
-                        Text(
-                            text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
-                            color = iconColor.copy(alpha = 0.5f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(start = 20.dp),
+                        .padding(start = 20.dp, top = 8.dp, bottom = 8.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    onKeyboardAction = {
-                        if (query.isNotBlank()) {
-                            val url = if (query.startsWith("http://") || query.startsWith("https://"))
-                                query
-                            else
-                                buildSearch(query)
-                            onNavigate(url)
+                    keyboardActions = KeyboardActions(onSearch = { doSearch() }),
+                    decorationBox = { innerField ->
+                        innerField()
+                        if (query.isEmpty()) {
+                            Text(
+                                text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
+                                color = iconColor.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 20.dp)
+                            )
                         }
                     },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedLabelColor = Color.Transparent,
-                        unfocusedLabelColor = Color.Transparent,
-                        focusedTextColor = textColor,
-                        unfocusedTextColor = textColor,
-                    ),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor)
                 )
                 Icon(
