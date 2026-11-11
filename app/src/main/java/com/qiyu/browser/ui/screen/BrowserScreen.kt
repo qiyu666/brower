@@ -281,7 +281,8 @@ fun BrowserScreen(
                 webManager.showTab(tabId)
                 showTabSwitcher = false
             },
-            onDismiss = { showTabSwitcher = false }
+            onDismiss = { showTabSwitcher = false },
+            getThumbnail = { tabId -> webManager.getThumbnail(tabId) }
         )
     }
 
