@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.Search
@@ -439,16 +440,27 @@ private fun TabCard2(
         modifier = cardModifier
             .clickable { onSelect(tab.id) }
     ) {
-        // Header: favicon + host + close
+        // Header: site initial + host + close
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Language, "",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF333333)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (host.isNotEmpty() && host != "新标签页") host.first().uppercase() else "?",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontSize = 10.sp
+                )
+            }
             Spacer(Modifier.width(6.dp))
             Text(
                 text = host,
