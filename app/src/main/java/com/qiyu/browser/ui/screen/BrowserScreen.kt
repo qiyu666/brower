@@ -58,12 +58,15 @@ fun BrowserScreen(
     var showTabSwitcher by remember { mutableStateOf(false) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
+    val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
+        && (config.homePage.isEmpty() || config.homePage == "about:blank")
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        if (!showNewTab) {
         // Tab strip
         if (tabs.size > 1 || tabs.firstOrNull()?.url?.isNotEmpty() == true) {
             TabStrip(
@@ -166,8 +169,6 @@ fun BrowserScreen(
 
         // Content area
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
-                && (config.homePage.isEmpty() || config.homePage == "about:blank")
             if (showNewTab) {
                 NewTabPage(
                     onNavigate = { url ->
@@ -184,6 +185,7 @@ fun BrowserScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+        }
         }
 
         // Bottom nav
