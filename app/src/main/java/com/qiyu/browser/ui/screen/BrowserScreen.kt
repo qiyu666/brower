@@ -316,7 +316,7 @@ fun TabSwitcherOverlay(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF1E1E1E))
@@ -343,6 +343,7 @@ fun TabSwitcherOverlay(
         // Tab grid
         LazyColumn(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(top = 8.dp)
