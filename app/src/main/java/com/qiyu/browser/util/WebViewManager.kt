@@ -107,6 +107,20 @@ class WebViewManager(
         webViews.clear()
     }
 
+    fun getThumbnail(tabId: Int, maxWidth: Int = 400, maxHeight: Int = 300): Bitmap? {
+        val webView = webViews[tabId] ?: return null
+        return try {
+            if (webView.width == 0 || webView.height == 0) return null
+            val bitmap = android.graphics.Bitmap.createBitmap(webView.width, webView.height, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            webView.draw(canvas)
+            val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height, 1f)
+            android.graphics.Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun applyDarkMode(dark: Boolean) {
         webViews.forEach { (tabId, webView) ->
             webView.setBackgroundColor(if (dark) 0xFF1E1E1E.toInt() else 0xFFFFFFFF.toInt())
