@@ -297,8 +297,10 @@ fun BrowserScreen(
                 }
             },
             confirmButton = {},
-            dismissButton = TextButton(onClick = { showMenu = false }) {
-                Text("\u53d6\u6d88")
+            dismissButton = {
+                TextButton(onClick = { showMenu = false }) {
+                    Text("\u53d6\u6d88")
+                }
             }
         )
     }
