@@ -174,6 +174,7 @@ fun BrowserScreen(
                 )
             }
         }
+        }
 
         // Content area
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -193,7 +194,6 @@ fun BrowserScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-        }
         }
 
         // Bottom nav
