@@ -3,6 +3,7 @@ package com.qiyu.browser.util
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
@@ -111,11 +112,11 @@ class WebViewManager(
         val webView = webViews[tabId] ?: return null
         return try {
             if (webView.width == 0 || webView.height == 0) return null
-            val bitmap = android.graphics.Bitmap.createBitmap(webView.width, webView.height, android.graphics.Bitmap.Config.ARGB_8888)
+            val bitmap = Bitmap.createBitmap(webView.width, webView.height, Bitmap.Config.ARGB_8888)
             val canvas = android.graphics.Canvas(bitmap)
             webView.draw(canvas)
             val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height, 1f)
-            android.graphics.Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
+            Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
         } catch (e: Exception) {
             null
         }
