@@ -17,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -314,6 +316,7 @@ fun TabSwitcherOverlay(
     onClose: (Int) -> Unit,
     onNewTab: () -> Unit,
     onDismiss: () -> Unit,
+    getThumbnail: (Int) -> android.graphics.Bitmap?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -340,67 +343,115 @@ fun TabSwitcherOverlay(
             }
         }
 
-        // Tab grid
-        LazyColumn(
+        // 2-column grid with thumbnails
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(tabs, key = { it.id }) { tab ->
                 val isActive = tab.id == activeTabId
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    else MaterialTheme.colorScheme.surface,
-                    border = if (isActive) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                val thumbnail = getThumbnail(tab.id)
+
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
                         .clickable { onSelect(tab.id) }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // Thumbnail area
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF2A2A2A))
+                            .border(
+                                width = if (isActive) 2.dp else 0.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
                     ) {
-                        // Tab content
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1
+                        if (thumbnail != null) {
+                            Image(
+                                bitmap = thumbnail.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
-                            Text(
-                                text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                maxLines = 1
-                            )
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Star, "",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
                         }
                         // Close button
-                        IconButton(onClick = { onClose(tab.id) }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, "", modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        if (tabs.size > 1) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xCC333333)
+                                ) {
+                                    IconButton(
+                                        onClick = { onClose(tab.id) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, "",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = Color.White)
+                                    }
+                                }
+                            }
                         }
                     }
+
+                    // Title and URL
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        maxLines = 1
+                    )
                 }
             }
 
             // New tab button
             item {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { onNewTab() }
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center
+                        .aspectRatio(4f / 3f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFF333333), RoundedCornerShape(8.dp))
+                        .clickable { onNewTab() },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Default.Add, "", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    Spacer(Modifier.width(8.dp))
-                    Text("新标签页", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Icon(Icons.Default.Add, "", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.height(4.dp))
+                    Text("新标签页", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             }
         }
