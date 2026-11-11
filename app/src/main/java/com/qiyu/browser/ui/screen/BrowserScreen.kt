@@ -56,6 +56,7 @@ fun BrowserScreen(
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
     val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
@@ -219,9 +220,7 @@ fun BrowserScreen(
             },
             tabCount = tabs.size,
             onTabSwitcher = { showTabSwitcher = true },
-            onMenu = {
-                // TODO: open menu dialog
-            },
+            onMenu = { showMenu = true },
             canGoBack = activeTab?.canGoBack ?: false,
             canGoForward = activeTab?.canGoForward ?: false
         )
@@ -278,6 +277,29 @@ fun BrowserScreen(
                 showTabSwitcher = false
             },
             onDismiss = { showTabSwitcher = false }
+        )
+    }
+
+    // Menu dialog
+    if (showMenu) {
+        AlertDialog(
+            onDismissRequest = { showMenu = false },
+            text = {
+                Column {
+                    MenuRow("\u4e66\u7b7e") { onNavigateToBookmarks(); showMenu = false }
+                    MenuRow("\u5386\u53f2\u8bb0\u5f55") { onNavigateToHistory(); showMenu = false }
+                    MenuRow("\u4e0b\u8f7d") { onNavigateToDownloads(); showMenu = false }
+                    MenuRow("\u8bbe\u7f6e") { onNavigateToSettings(); showMenu = false }
+                    MenuRow("\u5206\u4eab") {
+                        activeTab?.let { onShare(it.url, it.title) }
+                        showMenu = false
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = TextButton(onClick = { showMenu = false }) {
+                Text("\u53d6\u6d88")
+            }
         )
     }
 }
@@ -380,4 +402,16 @@ fun TabSwitcherOverlay(
             }
         }
     }
+}
+
+@Composable
+fun MenuRow(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp)
+    )
 }
