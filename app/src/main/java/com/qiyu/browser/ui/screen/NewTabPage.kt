@@ -67,26 +67,28 @@ fun NewTabPage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(40.dp)
+                .padding(horizontal = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.height(0.dp))
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(64.dp)
             )
+            Spacer(Modifier.height(48.dp))
 
+            // Search box
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(inputBg)
                     .border(
                         width = 1.dp,
                         color = inputBorder,
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(28.dp)
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -96,7 +98,7 @@ fun NewTabPage(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(start = 20.dp),
+                        .padding(horizontal = 20.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
@@ -110,10 +112,8 @@ fun NewTabPage(
                         if (query.isEmpty()) {
                             Text(
                                 text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
-                                color = iconColor.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier
-                                    .padding(start = 20.dp, top = 8.dp, bottom = 8.dp)
+                                color = iconColor.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
                         inner()
@@ -125,7 +125,7 @@ fun NewTabPage(
                     tint = iconColor,
                     modifier = Modifier
                         .padding(end = 16.dp)
-                        .size(20.dp)
+                        .size(22.dp)
                 )
             }
         }
