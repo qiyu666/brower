@@ -296,6 +296,12 @@ fun BrowserScreen(
                     MenuRow("\u4e66\u7b7e") { onNavigateToBookmarks(); showMenu = false }
                     MenuRow("\u5386\u53f2\u8bb0\u5f55") { onNavigateToHistory(); showMenu = false }
                     MenuRow("\u4e0b\u8f7d") { onNavigateToDownloads(); showMenu = false }
+                    MenuRow("\u79c1\u5bc6\u6a21\u5f0f") {
+                        val tabId = tabsVM.addTab("", incognito = true)
+                        webManager.createWebView(tabId, incognito = true)
+                        webManager.showTab(tabId)
+                        showMenu = false
+                    }
                     MenuRow("\u8bbe\u7f6e") { onNavigateToSettings(); showMenu = false }
                     MenuRow("\u5206\u4eab") {
                         activeTab?.let { onShare(it.url, it.title) }
@@ -427,7 +433,11 @@ private fun TabCard2(
     cardModifier: Modifier = Modifier
 ) {
     val thumbnail = getThumbnail(tab.id)
-    val borderColor = if (isActive) Color(0xFF1A73E8) else Color.Transparent
+    val borderColor = when {
+        tab.isIncognito -> Color.Black
+        isActive -> Color(0xFF1A73E8)
+        else -> Color.Transparent
+    }
     val host = try {
         if (tab.url.isNotEmpty() && tab.url != "about:blank") {
             java.net.URL(tab.url).host.ifEmpty { tab.url }
@@ -462,6 +472,15 @@ private fun TabCard2(
                 )
             }
             Spacer(Modifier.width(6.dp))
+            if (tab.isIncognito) {
+                Text(
+                    text = "\u9690\u8eab",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF9E9E9E),
+                    fontSize = 10.sp
+                )
+                Spacer(Modifier.width(4.dp))
+            }
             Text(
                 text = host,
                 style = MaterialTheme.typography.bodySmall,
