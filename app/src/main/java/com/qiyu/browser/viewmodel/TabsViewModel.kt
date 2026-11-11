@@ -51,6 +51,11 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
             }
             remaining
         }
+        if (_tabs.value.isEmpty()) {
+            val id = nextTabId++
+            _tabs.update { it + TabItem(id = id, url = "", title = AppStrings.t("new_tab"), isIncognito = false) }
+            _activeTabId.value = id
+        }
     }
 
     fun closeAllTabs() {
