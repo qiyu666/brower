@@ -29,6 +29,8 @@ class WebViewManager(
 
     val container = FrameLayout(context)
     private val webViews = mutableMapOf<Int, WebView>()
+    private val incognitoTabs = mutableSetOf<Int>()
+    private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
 
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
         val config = settingsRepo.config.value
@@ -40,8 +42,8 @@ class WebViewManager(
             }
             settings.apply {
                 javaScriptEnabled = true
-                domStorageEnabled = true
-                databaseEnabled = true
+                domStorageEnabled = !incognito
+                databaseEnabled = !incognito
                 setSupportZoom(false)
                 builtInZoomControls = false
                 useWideViewPort = true
@@ -78,6 +80,10 @@ class WebViewManager(
             )
         )
         webViews[tabId] = webView
+        if (incognito) {
+            incognitoTabs.add(tabId)
+            incognitoDomains[tabId] = mutableSetOf()
+        }
         return webView
     }
 
@@ -90,6 +96,8 @@ class WebViewManager(
     }
 
     fun destroyWebView(tabId: Int) {
+        clearIncognitoCookies(tabId)
+        incognitoTabs.remove(tabId)
         webViews.remove(tabId)?.let {
             it.stopLoading()
             it.loadUrl("about:blank")
@@ -106,6 +114,21 @@ class WebViewManager(
             it.destroy()
         }
         webViews.clear()
+    }
+
+    fun clearIncognitoCookies(tabId: Int) {
+        if (tabId !in incognitoTabs) return
+        val domains = incognitoDomains.remove(tabId) ?: return
+        try {
+            val cm = android.webkit.CookieManager.getInstance()
+            val allCookies = cm.cookies
+            allCookies?.filter { cookie ->
+                domains.any { d -> cookie.domain?.contains(d) == true }
+            }?.forEach { cookie ->
+                cm.setCookie(cookie.url, "deleted=true; Max-Age=0")
+            }
+            cm.flush()
+        } catch (e: Exception) {}
     }
 
     fun getThumbnail(tabId: Int, maxWidth: Int = 400, maxHeight: Int = 300): Bitmap? {
@@ -164,6 +187,10 @@ class WebViewManager(
             @Deprecated("Deprecated in API 23")
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                incognitoDomains[tabId]?.let { set ->
+                    val host = try { android.net.Uri.parse(url)?.host } catch (e: Exception) { null }
+                    if (host != null) set.add(host)
+                }
                 listener.onPageStarted(tabId, url ?: "")
             }
 
