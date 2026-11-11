@@ -346,7 +346,7 @@ fun TabSwitcherOverlay(
             }
         }
 
-        // 2-column grid with thumbnails
+        // Tab cards with thumbnails
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -354,24 +354,67 @@ fun TabSwitcherOverlay(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Cards in pairs
-            items(tabs.size / 2 + 1) { rowIndex ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+            items(tabs, key = { it.id }) { tab ->
+                val isActive = tab.id == activeTabId
+                val thumbnail = getThumbnail(tab.id)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(tab.id) }
                 ) {
-                    // Left card
-                    tabs.getOrNull(rowIndex * 2)?.let { tab ->
-                        TabCard(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, tabs.size > 1, getThumbnail)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF2A2A2A))
+                            .border(
+                                width = if (isActive) 2.dp else 0.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        if (thumbnail != null) {
+                            Image(
+                                bitmap = thumbnail.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Star, "",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(28.dp))
+                            }
+                        }
+                        if (tabs.size > 1) {
+                            Box(Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                                Surface(shape = CircleShape, color = Color(0xCC333333)) {
+                                    IconButton(onClick = { onClose(tab.id) }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Close, "", modifier = Modifier.size(14.dp), tint = Color.White)
+                                    }
+                                }
+                            }
+                        }
                     }
-                    // Right card
-                    tabs.getOrNull(rowIndex * 2 + 1)?.let { tab ->
-                        TabCard(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, tabs.size > 1, getThumbnail)
-                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        maxLines = 1
+                    )
                 }
             }
 
-            // New tab button
             item {
                 Row(
                     modifier = Modifier
@@ -402,70 +445,4 @@ fun MenuRow(label: String, onClick: () -> Unit) {
     )
 }
 
-@Composable
-private fun TabCard(
-    tab: com.qiyu.browser.model.TabItem,
-    isActive: Boolean,
-    onSelect: (Int) -> Unit,
-    onClose: () -> Unit,
-    showClose: Boolean,
-    getThumbnail: (Int) -> android.graphics.Bitmap?
-) {
-    val thumbnail = getThumbnail(tab.id)
 
-    Column(
-        modifier = Modifier
-            .weight(1f)
-            .clickable { onSelect(tab.id) }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(4f / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2A2A2A))
-                .border(
-                    width = if (isActive) 2.dp else 0.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(8.dp)
-                )
-        ) {
-            if (thumbnail != null) {
-                Image(
-                    bitmap = thumbnail.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Star, "",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.size(28.dp))
-                }
-            }
-            if (showClose) {
-                Box(Modifier.align(Alignment.TopEnd).padding(4.dp)) {
-                    Surface(shape = CircleShape, color = Color(0xCC333333)) {
-                        IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, "", modifier = Modifier.size(14.dp), tint = Color.White)
-                        }
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
-        )
-        Text(
-            text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            maxLines = 1
-        )
-    }
-}
