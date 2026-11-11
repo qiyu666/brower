@@ -426,22 +426,54 @@ private fun TabCard2(
     cardModifier: Modifier = Modifier
 ) {
     val thumbnail = getThumbnail(tab.id)
+    val borderColor = if (isActive) Color(0xFF1A73E8) else Color.Transparent
+    val host = try {
+        if (tab.url.isNotEmpty() && tab.url != "about:blank") {
+            java.net.URL(tab.url).host.ifEmpty { tab.url }
+        } else "新标签页"
+    } catch (e: Exception) {
+        if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "新标签页"
+    }
 
     Column(
         modifier = cardModifier
             .clickable { onSelect(tab.id) }
     ) {
+        // Header: favicon + host + close
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Public, "",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = host,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
+            )
+            if (showClose) {
+                IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Close, "",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
+            }
+        }
+
+        // Thumbnail
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 3f)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2A2A2A))
-                .border(
-                    width = if (isActive) 2.dp else 0.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(8.dp)
-                )
+                .background(Color(0xFF1E1E1E))
+                .border(2.dp, borderColor, RoundedCornerShape(8.dp))
         ) {
             if (thumbnail != null) {
                 Image(
@@ -453,21 +485,11 @@ private fun TabCard2(
             } else {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Star, "",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.size(28.dp))
-                }
-            }
-            if (showClose) {
-                Box(Modifier.align(Alignment.TopEnd).padding(4.dp)) {
-                    Surface(shape = CircleShape, color = Color(0xCC333333)) {
-                        IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, "", modifier = Modifier.size(14.dp), tint = Color.White)
-                        }
-                    }
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        modifier = Modifier.size(32.dp))
                 }
             }
         }
-        Spacer(Modifier.height(4.dp))
     }
 }
 
