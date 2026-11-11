@@ -446,7 +446,7 @@ private fun TabCard2(
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Public, "",
+            Icon(Icons.Default.Language, "",
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
