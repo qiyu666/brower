@@ -375,19 +375,28 @@ fun TabSwitcherOverlay(
                 }
             }
 
-            // New tab button
+            // Floating new tab button
             item {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { onNewTab() }
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Add, "", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    Spacer(Modifier.width(8.dp))
-                    Text("新标签页", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF1A73E8),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.clickable { onNewTab() }
+                    ) {
+                        Box(
+                            modifier = Modifier.size(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, "", tint = Color.White,
+                                modifier = Modifier.size(28.dp))
+                        }
+                    }
                 }
             }
         }
@@ -459,18 +468,6 @@ private fun TabCard2(
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = if (tab.title.isEmpty() || tab.title == "about:blank") "新标签页" else tab.title,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
-        )
-        Text(
-            text = if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            maxLines = 1
-        )
     }
 }
 
