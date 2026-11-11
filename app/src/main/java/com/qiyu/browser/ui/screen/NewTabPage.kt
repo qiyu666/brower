@@ -70,16 +70,15 @@ fun NewTabPage(
                 .padding(horizontal = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(0.dp))
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(72.dp)
             )
             Spacer(Modifier.height(48.dp))
 
-            // Search box
-            Row(
+            // Search box with centered text
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -89,16 +88,14 @@ fun NewTabPage(
                         width = 1.dp,
                         color = inputBorder,
                         shape = RoundedCornerShape(28.dp)
-                    ),
-                verticalAlignment = Alignment.CenterVertically
+                    )
             ) {
                 BasicTextField(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(horizontal = 20.dp),
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
@@ -107,16 +104,21 @@ fun NewTabPage(
                         onGo = { doSearch() },
                         onSend = { doSearch() }
                     ),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = textColor,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    ),
                     decorationBox = { inner ->
-                        if (query.isEmpty()) {
-                            Text(
-                                text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
-                                color = iconColor.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                        Box(contentAlignment = Alignment.Center) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
+                                    color = iconColor.copy(alpha = 0.6f),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            inner()
                         }
-                        inner()
                     }
                 )
                 Icon(
@@ -124,8 +126,9 @@ fun NewTabPage(
                     contentDescription = null,
                     tint = iconColor,
                     modifier = Modifier
+                        .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
-                        .size(22.dp)
+                        .size(20.dp)
                 )
             }
         }
