@@ -74,8 +74,16 @@ fun BrowserScreen(
                 activeTabId = activeTab?.id,
                 onTabClick = { tabsVM.switchTab(it) },
                 onTabClose = {
+                    val wasLast = tabsVM.tabs.value.size == 1
                     tabsVM.closeTab(it)
                     webManager.destroyWebView(it)
+                    if (wasLast) {
+                        val newTab = tabsVM.tabs.value.lastOrNull()
+                        newTab?.let {
+                            webManager.createWebView(it.id, false)
+                            webManager.showTab(it.id)
+                        }
+                    }
                 },
                 onNewTab = {
                     val homeUrl = config.homePage
@@ -252,9 +260,16 @@ fun BrowserScreen(
                 showTabSwitcher = false
             },
             onClose = { tabId ->
+                val wasLast = tabsVM.tabs.value.size == 1
                 tabsVM.closeTab(tabId)
                 webManager.destroyWebView(tabId)
-                if (tabsVM.tabs.value.isEmpty()) showTabSwitcher = false
+                if (wasLast) {
+                    val newTab = tabsVM.tabs.value.lastOrNull()
+                    newTab?.let {
+                        webManager.createWebView(it.id, false)
+                        webManager.showTab(it.id)
+                    }
+                }
             },
             onNewTab = {
                 val tabId = tabsVM.addTab()
