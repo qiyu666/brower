@@ -121,11 +121,18 @@ class WebViewManager(
         val domains = incognitoDomains.remove(tabId) ?: return
         try {
             val cm = android.webkit.CookieManager.getInstance()
-            val allCookies = cm.cookies
-            allCookies?.filter { cookie ->
-                domains.any { d -> cookie.domain?.contains(d) == true }
-            }?.forEach { cookie ->
-                cm.setCookie(cookie.url, "deleted=true; Max-Age=0")
+            domains.forEach { domain ->
+                listOf("https://$domain", "http://$domain").forEach { url ->
+                    val cookieStr = cm.getCookie(url)
+                    if (!cookieStr.isNullOrEmpty()) {
+                        cookieStr.split("; ")
+                            .filter { it.isNotBlank() }
+                            .forEach { c ->
+                                val name = c.substringBefore("=")
+                                if (name.isNotEmpty()) cm.setCookie(url, "$name=deleted; Max-Age=0")
+                            }
+                    }
+                }
             }
             cm.flush()
         } catch (e: Exception) {}
