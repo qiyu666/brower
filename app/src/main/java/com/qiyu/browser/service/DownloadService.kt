@@ -114,12 +114,15 @@ class DownloadService : Service() {
     ) {
         val app = application as NovaBrowserApp
         val repo = app.downloadRepository
+        val config = app.settingsRepository.config.value
 
         try {
-            val downloadDir = File(
-                getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                "downloads"
-            )
+            val downloadDir = when (config.downloadDir) {
+                "pictures" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "downloads")
+                "movies" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES), "downloads")
+                "music" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC), "downloads")
+                else -> File(getExternalFilesDir(null), "downloads")
+            }
             if (!downloadDir.exists()) downloadDir.mkdirs()
 
             val file = File(downloadDir, fileName)
