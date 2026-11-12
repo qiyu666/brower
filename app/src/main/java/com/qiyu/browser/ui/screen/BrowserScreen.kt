@@ -248,13 +248,15 @@ fun BrowserScreen(
 
     // Pause/resume tabs when switching (memory optimization)
     LaunchedEffect(activeTab?.id) {
-        prevTabId?.let { prevId ->
-            if (prevId != activeTab?.id) {
-                webManager.pauseTab(prevId)
-            }
+        val prev: Int? = prevTabId
+        val curr: Int? = activeTab?.id
+        if (prev != null && prev != curr) {
+            webManager.pauseTab(prev)
         }
-        activeTab?.id?.let { webManager.resumeTab(it) }
-        prevTabId = activeTab?.id
+        if (curr != null) {
+            webManager.resumeTab(curr)
+        }
+        prevTabId = curr
     }
 
     // Apply desktop mode to all WebViews when it changes
