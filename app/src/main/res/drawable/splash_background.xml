@@ -7,21 +7,7 @@
         </shape>
     </item>
 
-    <!-- 彩色渐变圆 -->
-    <item
-        android:gravity="center"
-        android:width="96dp"
-        android:height="96dp">
-        <shape android:shape="oval">
-            <gradient
-                android:type="sweep"
-                android:startColor="#4CAF50"
-                android:centerColor="#2196F3"
-                android:endColor="#1565C0"/>
-        </shape>
-    </item>
-
-    <!-- N 图标（白色） -->
+    <!-- N 图标（白色，居中） -->
     <item
         android:gravity="center"
         android:width="96dp"
