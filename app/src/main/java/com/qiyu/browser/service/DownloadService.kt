@@ -4,9 +4,11 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.qiyu.browser.NovaBrowserApp
@@ -117,57 +119,89 @@ class DownloadService : Service() {
         val config = app.settingsRepository.config.value
 
         try {
-            val downloadDir = when (config.downloadDir) {
-                "pictures" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "downloads")
-                "movies" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES), "downloads")
-                "music" -> File(getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC), "downloads")
-                else -> File(getExternalFilesDir(null), "downloads")
-            }
-            if (!downloadDir.exists()) downloadDir.mkdirs()
-
-            val file = File(downloadDir, fileName)
-
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 30_000
             connection.readTimeout = 30_000
             connection.connect()
 
             val totalSize = connection.contentLength.toLong()
+            val filePath: String
 
-            connection.inputStream.use { input ->
-                file.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
-                    var downloaded = 0L
-                    var lastUpdate = 0L
+            if (config.downloadDir.startsWith("content://")) {
+                // SAF 自定义目录
+                val dirUri = Uri.parse(config.downloadDir)
+                val mimeForDoc = mimeType ?: "application/octet-stream"
+                val docUri = DocumentsContract.createDocument(
+                    contentResolver, dirUri, mimeForDoc, fileName
+                ) ?: throw Exception("Cannot create file in custom directory")
+                filePath = docUri.toString()
 
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        downloaded += read
-
-                        val now = System.currentTimeMillis()
-                        if (now - lastUpdate > 500 && totalSize > 0) {
-                            lastUpdate = now
-                            withContext(Dispatchers.Main) {
-                                repo.update(
-                                    DownloadItem(
-                                        id = downloadId,
-                                        url = url,
-                                        fileName = fileName,
-                                        filePath = file.absolutePath,
-                                        mimeType = mimeType,
-                                        fileSize = totalSize,
-                                        downloadedSize = downloaded,
+                connection.inputStream.use { input ->
+                    contentResolver.openOutputStream(docUri)?.use { output ->
+                        val buffer = ByteArray(8192)
+                        var downloaded = 0L
+                        var lastUpdate = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            val now = System.currentTimeMillis()
+                            if (now - lastUpdate > 500 && totalSize > 0) {
+                                lastUpdate = now
+                                withContext(Dispatchers.Main) {
+                                    repo.update(DownloadItem(
+                                        id = downloadId, url = url, fileName = fileName,
+                                        filePath = filePath, mimeType = mimeType,
+                                        fileSize = totalSize, downloadedSize = downloaded,
                                         status = DownloadStatus.IN_PROGRESS,
                                         createdAt = System.currentTimeMillis()
-                                    )
-                                )
+                                    ))
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 应用内部目录
+                val downloadDir = when (config.downloadDir) {
+                    "pictures" -> File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "downloads")
+                    "movies" -> File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "downloads")
+                    "music" -> File(getExternalFilesDir(Environment.DIRECTORY_MUSIC), "downloads")
+                    else -> File(getExternalFilesDir(null), "downloads")
+                }
+                if (!downloadDir.exists()) downloadDir.mkdirs()
+                val file = File(downloadDir, fileName)
+                filePath = file.absolutePath
+
+                connection.inputStream.use { input ->
+                    file.outputStream().use { output ->
+                        val buffer = ByteArray(8192)
+                        var downloaded = 0L
+                        var lastUpdate = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            val now = System.currentTimeMillis()
+                            if (now - lastUpdate > 500 && totalSize > 0) {
+                                lastUpdate = now
+                                withContext(Dispatchers.Main) {
+                                    repo.update(DownloadItem(
+                                        id = downloadId, url = url, fileName = fileName,
+                                        filePath = filePath, mimeType = mimeType,
+                                        fileSize = totalSize, downloadedSize = downloaded,
+                                        status = DownloadStatus.IN_PROGRESS,
+                                        createdAt = System.currentTimeMillis()
+                                    ))
+                                }
                             }
                         }
                     }
                 }
             }
+
             connection.disconnect()
 
             // Mark as completed
@@ -177,7 +211,7 @@ class DownloadService : Service() {
                         id = downloadId,
                         url = url,
                         fileName = fileName,
-                        filePath = file.absolutePath,
+                        filePath = filePath,
                         mimeType = mimeType,
                         fileSize = totalSize,
                         downloadedSize = totalSize,
