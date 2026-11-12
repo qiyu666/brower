@@ -7,8 +7,12 @@ object WebUtils {
     fun isUrl(input: String): Boolean {
         val trimmed = input.trim()
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
-        // 没有空格 → 当 URL 处理（自动补 https://）
-        return !trimmed.contains(' ')
+        if (trimmed.contains(' ')) return false
+        // 最后一个 . 后面至少 2 个英文字母 → 域名
+        val lastDot = trimmed.lastIndexOf('.')
+        if (lastDot < 1) return false
+        val tld = trimmed.substring(lastDot + 1)
+        return tld.length >= 2 && tld.all { it.isLetter() }
     }
 
     fun normalizeUrl(input: String): String {
