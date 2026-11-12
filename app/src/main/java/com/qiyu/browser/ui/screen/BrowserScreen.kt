@@ -243,6 +243,11 @@ fun BrowserScreen(
         webManager.applyDarkMode(isDark)
     }
 
+    // Apply desktop mode to all WebViews when it changes
+    LaunchedEffect(config.useDesktopMode) {
+        webManager.applyDesktopMode(config.useDesktopMode)
+    }
+
     // Observe bookmark state for current tab
     LaunchedEffect(activeTab?.url) {
         activeTab?.url?.let { url ->
