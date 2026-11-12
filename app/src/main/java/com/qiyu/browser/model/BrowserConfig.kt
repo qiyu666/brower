@@ -8,5 +8,7 @@ data class BrowserConfig(
     val dataSaver: Boolean = false,
     val autoPlayVideos: Boolean = false,
     val blockPopups: Boolean = true,
-    val language: String = "en"
+    val language: String = "en",
+    val useDesktopMode: Boolean = false,
+    val downloadDir: String = "default"
 )
