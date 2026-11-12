@@ -6,18 +6,20 @@ object WebUtils {
 
     fun isUrl(input: String): Boolean {
         val trimmed = input.trim()
-        return try {
-            val uri = Uri.parse(trimmed)
-            (uri.scheme == "http" || uri.scheme == "https") &&
-                !uri.host.isNullOrEmpty()
-        } catch (e: Exception) {
-            trimmed.startsWith("http://") || trimmed.startsWith("https://")
-        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
+        // 没有空格 + 含有点（TLD）→ 域名或域名/路径
+        if (trimmed.contains(' ')) return false
+        val hostPart = trimmed.substringBefore('/').substringBefore('?').substringBefore(':')
+        if (hostPart.isEmpty()) return false
+        val dotIndex = hostPart.indexOf('.')
+        if (dotIndex < 1 || dotIndex == hostPart.length - 1) return false
+        val tld = hostPart.substring(dotIndex + 1)
+        return tld.length >= 2
     }
 
     fun normalizeUrl(input: String): String {
         val trimmed = input.trim()
-        if (isUrl(trimmed)) return trimmed
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
         return "https://$trimmed"
     }
 
