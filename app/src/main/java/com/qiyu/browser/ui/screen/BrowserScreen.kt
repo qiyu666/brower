@@ -390,11 +390,11 @@ fun TabSwitcherOverlay(
                 ) {
                     // Card at index row*2
                     tabs.getOrNull(row * 2)?.let { tab ->
-                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, tabs.size > 1, getThumbnail, Modifier.weight(1f))
+                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, Modifier.weight(1f))
                     }
                     // Card at index row*2+1
                     tabs.getOrNull(row * 2 + 1)?.let { tab ->
-                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, tabs.size > 1, getThumbnail, Modifier.weight(1f))
+                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, Modifier.weight(1f))
                     }
                     // If only one card in this row, fill remaining space
                     if (tabs.getOrNull(row * 2 + 1) == null && tabs.getOrNull(row * 2) != null) {
