@@ -55,8 +55,8 @@ fun NewTabPage(
 
     fun doSearch() {
         if (query.isBlank()) return
-        val url = if (query.startsWith("http://") || query.startsWith("https://"))
-            query
+        val url = if (com.qiyu.browser.util.WebUtils.isUrl(query))
+            com.qiyu.browser.util.WebUtils.normalizeUrl(query)
         else
             buildSearch(query)
         onNavigate(url)
