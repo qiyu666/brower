@@ -7,14 +7,8 @@ object WebUtils {
     fun isUrl(input: String): Boolean {
         val trimmed = input.trim()
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
-        // 没有空格 + 含有点（TLD）→ 域名或域名/路径
-        if (trimmed.contains(' ')) return false
-        val hostPart = trimmed.substringBefore('/').substringBefore('?').substringBefore(':')
-        if (hostPart.isEmpty()) return false
-        val dotIndex = hostPart.indexOf('.')
-        if (dotIndex < 1 || dotIndex == hostPart.length - 1) return false
-        val tld = hostPart.substring(dotIndex + 1)
-        return tld.length >= 2
+        // 没有空格 → 当 URL 处理（自动补 https://）
+        return !trimmed.contains(' ')
     }
 
     fun normalizeUrl(input: String): String {
