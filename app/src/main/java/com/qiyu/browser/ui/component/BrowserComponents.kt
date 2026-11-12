@@ -130,34 +130,6 @@ fun AddressBar(
             )
         }
     }
-
-    // Submit overlay when user is editing
-    if (isEditing) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Go",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable {
-                    onUrlSubmit(inputText.trim())
-                    isEditing = false
-                }
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                "Cancel",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.clickable {
-                    inputText = url
-                    isEditing = false
-                }
-            )
-        }
-    }
 }
 
 @Composable
