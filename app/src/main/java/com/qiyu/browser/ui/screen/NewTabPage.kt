@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,7 +32,8 @@ import com.qiyu.browser.util.AppStrings
 fun NewTabPage(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
-    searchEngine: String = "google"
+    searchEngine: String = "google",
+    recentItems: List<com.qiyu.browser.model.HistoryItem> = emptyList()
 ) {
     var query by remember { mutableStateOf("") }
     val isDark = isSystemInDarkTheme()
@@ -131,6 +133,58 @@ fun NewTabPage(
                         .padding(end = 16.dp)
                         .size(20.dp)
                 )
+            }
+
+            // 最近访问
+            if (recentItems.isNotEmpty()) {
+                Spacer(Modifier.height(36.dp))
+                Text(
+                    text = if (AppStrings.currentLanguage == "zh") "最近访问" else "Recently visited",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = iconColor.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val half = recentItems.chunked(2)
+                    half.forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            row.forEach { item ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(140.dp)
+                                        .height(64.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(inputBg)
+                                        .border(1.dp, inputBorder, RoundedCornerShape(12.dp))
+                                        .clickable { onNavigate(item.url) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(8.dp)
+                                    ) {
+                                        Text(
+                                            text = com.qiyu.browser.util.WebUtils.extractDomain(item.url),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = textColor,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = item.title.ifEmpty { "-" },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = iconColor.copy(alpha = 0.6f),
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
             }
         }
     }
