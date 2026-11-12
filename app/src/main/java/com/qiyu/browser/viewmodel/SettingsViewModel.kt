@@ -28,4 +28,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         AppStrings.setLanguage(lang)
     }
     fun setSearchEngine(engine: String) = repo.setSearchEngine(engine)
+    fun setUseDesktopMode(enabled: Boolean) = repo.setUseDesktopMode(enabled)
+    fun setDownloadDir(dir: String) = repo.setDownloadDir(dir)
 }
