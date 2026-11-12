@@ -304,7 +304,8 @@ fun BrowserScreen(
                 showTabSwitcher = false
             },
             onDismiss = { showTabSwitcher = false },
-            getThumbnail = { tabId -> webManager.getThumbnail(tabId) }
+            getThumbnail = { tabId -> webManager.getThumbnail(tabId) },
+            getFavicon = { tabId -> webManager.getFavicon(tabId) }
         )
     }
 
@@ -349,6 +350,7 @@ fun TabSwitcherOverlay(
     onNewTab: () -> Unit,
     onDismiss: () -> Unit,
     getThumbnail: (Int) -> android.graphics.Bitmap?,
+    getFavicon: (Int) -> android.graphics.Bitmap?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -390,11 +392,11 @@ fun TabSwitcherOverlay(
                 ) {
                     // Card at index row*2
                     tabs.getOrNull(row * 2)?.let { tab ->
-                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, Modifier.weight(1f))
+                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, getFavicon, Modifier.weight(1f))
                     }
                     // Card at index row*2+1
                     tabs.getOrNull(row * 2 + 1)?.let { tab ->
-                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, Modifier.weight(1f))
+                        TabCard2(tab, tab.id == activeTabId, onSelect, { onClose(tab.id) }, true, getThumbnail, getFavicon, Modifier.weight(1f))
                     }
                     // If only one card in this row, fill remaining space
                     if (tabs.getOrNull(row * 2 + 1) == null && tabs.getOrNull(row * 2) != null) {
@@ -451,9 +453,11 @@ private fun TabCard2(
     onClose: () -> Unit,
     showClose: Boolean,
     getThumbnail: (Int) -> android.graphics.Bitmap?,
+    getFavicon: (Int) -> android.graphics.Bitmap?,
     cardModifier: Modifier = Modifier
 ) {
     val thumbnail = getThumbnail(tab.id)
+    val favicon = getFavicon(tab.id)
     val borderColor = when {
         tab.isIncognito -> Color.Black
         isActive -> Color(0xFF1A73E8)
@@ -478,19 +482,27 @@ private fun TabCard2(
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF333333)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (host.isNotEmpty() && host != "新标签页") host.first().uppercase() else "?",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    fontSize = 10.sp
+            if (favicon != null) {
+                Image(
+                    bitmap = favicon.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF333333)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (host.isNotEmpty() && host != "新标签页") host.first().uppercase() else "?",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontSize = 10.sp
+                    )
+                }
             }
             Spacer(Modifier.width(6.dp))
             if (tab.isIncognito) {
