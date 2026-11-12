@@ -8,10 +8,11 @@ object WebUtils {
         val trimmed = input.trim()
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
         if (trimmed.contains(' ')) return false
-        // 最后一个 . 后面至少 2 个英文字母 → 域名
-        val lastDot = trimmed.lastIndexOf('.')
+        // 取 host 部分（第一个 / 之前）再判断 TLD
+        val host = trimmed.substringBefore('/').substringBefore('?').substringBefore('#')
+        val lastDot = host.lastIndexOf('.')
         if (lastDot < 1) return false
-        val tld = trimmed.substring(lastDot + 1)
+        val tld = host.substring(lastDot + 1)
         return tld.length >= 2 && tld.all { it.isLetter() }
     }
 
