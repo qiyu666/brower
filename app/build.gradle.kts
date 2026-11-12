@@ -80,4 +80,7 @@ dependencies {
 
     // Coil
     implementation(libs.coil.compose)
+    
+    // SwipeRefreshLayout
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
