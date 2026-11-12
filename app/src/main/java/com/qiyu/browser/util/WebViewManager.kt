@@ -50,6 +50,7 @@ class WebViewManager(
     private val webViews = mutableMapOf<Int, WebView>()
     private val incognitoTabs = mutableSetOf<Int>()
     private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
+    private val favicons = mutableMapOf<Int, android.graphics.Bitmap>()
 
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
         val config = settingsRepo.config.value
@@ -116,6 +117,8 @@ class WebViewManager(
             view.visibility = if (id == tabId) View.VISIBLE else View.GONE
         }
     }
+
+    fun getFavicon(tabId: Int): android.graphics.Bitmap? = favicons[tabId]
 
     fun destroyWebView(tabId: Int) {
         clearIncognitoCookies(tabId)
@@ -236,6 +239,7 @@ class WebViewManager(
             @Deprecated("Deprecated in API 23")
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                if (favicon != null) favicons[tabId] = favicon
                 incognitoDomains[tabId]?.let { set ->
                     val host = try { android.net.Uri.parse(url)?.host } catch (e: Exception) { null }
                     if (host != null) set.add(host)
