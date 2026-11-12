@@ -71,25 +71,11 @@ fun NewTabPage(
                 .padding(horizontal = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(androidx.compose.ui.graphics.Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF4CAF50),
-                            Color(0xFF2196F3),
-                            Color(0xFF1565C0)
-                        )
-                    )),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(96.dp)
+            )
             Spacer(Modifier.height(48.dp))
 
             // Search box with centered text
