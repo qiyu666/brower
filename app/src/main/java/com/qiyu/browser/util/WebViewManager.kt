@@ -161,7 +161,7 @@ class WebViewManager(
     }
 
     fun applyDesktopMode(enabled: Boolean) {
-        webViews.forEach { wv ->
+        webViews.values.forEach { wv ->
             wv.settings.userAgentString = if (enabled) DESKTOP_UA else null
         }
     }
