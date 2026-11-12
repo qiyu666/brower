@@ -25,6 +25,8 @@ class SettingsRepository(private val context: Context) {
     fun setBlockPopups(enabled: Boolean) = updateConfig { it.copy(blockPopups = enabled) }
     fun setLanguage(lang: String) = updateConfig { it.copy(language = lang) }
     fun setSearchEngine(engine: String) = updateConfig { it.copy(searchEngine = engine) }
+    fun setUseDesktopMode(enabled: Boolean) = updateConfig { it.copy(useDesktopMode = enabled) }
+    fun setDownloadDir(dir: String) = updateConfig { it.copy(downloadDir = dir) }
 
     private fun loadConfig(): BrowserConfig {
         return BrowserConfig(
@@ -35,7 +37,9 @@ class SettingsRepository(private val context: Context) {
             dataSaver = prefs.getBoolean("data_saver", false),
             autoPlayVideos = prefs.getBoolean("auto_play", false),
             blockPopups = prefs.getBoolean("block_popups", true),
-            language = prefs.getString("language", "en") ?: "en"
+            language = prefs.getString("language", "en") ?: "en",
+            useDesktopMode = prefs.getBoolean("use_desktop", false),
+            downloadDir = prefs.getString("download_dir", "default") ?: "default"
         )
     }
 
@@ -49,6 +53,8 @@ class SettingsRepository(private val context: Context) {
             putBoolean("auto_play", config.autoPlayVideos)
             putBoolean("block_popups", config.blockPopups)
             putString("language", config.language)
+            putBoolean("use_desktop", config.useDesktopMode)
+            putString("download_dir", config.downloadDir)
         }.apply()
     }
 }
