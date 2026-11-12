@@ -65,6 +65,8 @@ fun BrowserScreen(
     var showMenu by remember { mutableStateOf(false) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
+    val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
+    var prevTabId by remember { mutableStateOf<Int?>(null) }
     val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
 
@@ -193,11 +195,12 @@ fun BrowserScreen(
                             tabsVM.updateTabState(tab.id, url = url, isLoading = true)
                         }
                     },
-                    searchEngine = config.searchEngine
+                    searchEngine = config.searchEngine,
+                    recentItems = recentItems
                 )
             } else {
                 AndroidView(
-                    factory = { webManager.container },
+                    factory = { webManager.refreshLayout },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -241,6 +244,17 @@ fun BrowserScreen(
     }
     LaunchedEffect(isDark) {
         webManager.applyDarkMode(isDark)
+    }
+
+    // Pause/resume tabs when switching (memory optimization)
+    LaunchedEffect(activeTab?.id) {
+        prevTabId?.let { prevId ->
+            if (prevId != activeTab?.id) {
+                webManager.pauseTab(prevId)
+            }
+        }
+        activeTab?.id?.let { webManager.resumeTab(it) }
+        prevTabId = activeTab?.id
     }
 
     // Apply desktop mode to all WebViews when it changes
