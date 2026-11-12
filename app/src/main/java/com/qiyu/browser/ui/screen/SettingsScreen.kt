@@ -13,6 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.viewmodel.SettingsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +34,21 @@ fun SettingsScreen(
     var engineDialog by remember { mutableStateOf(false) }
     var langDialog by remember { mutableStateOf(false) }
     var downloadDirDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val dirPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (e: Exception) {}
+            viewModel.setDownloadDir(it.toString())
+        }
+        downloadDirDialog = false
+    }
 
     Scaffold(
         topBar = {
@@ -150,7 +170,7 @@ fun SettingsScreen(
                     "pictures" -> "\u56fe\u7247"
                     "movies" -> "\u89c6\u9891"
                     "music" -> "\u97f3\u4e50"
-                    else -> "\u9ed8\u8ba4"
+                    else -> if (config.downloadDir.startsWith("content://")) "\u81ea\u5b9a\u4e49" else "\u9ed8\u8ba4"
                 }
             ) {
                 downloadDirDialog = true
@@ -251,6 +271,21 @@ fun SettingsScreen(
                             Text(label, style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface)
                         }
+                    }
+                    // 自定义目录（SAF）
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { dirPicker.launch(null) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (config.downloadDir.startsWith("content://")) {
+                            Icon(Icons.Default.Check, "", tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text("\u81ea\u5b9a\u4e49", style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             },
