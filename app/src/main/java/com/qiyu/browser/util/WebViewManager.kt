@@ -27,6 +27,11 @@ class WebViewManager(
     private val listener: WebViewListener
 ) {
 
+    companion object {
+        private const val DESKTOP_UA =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
     val container = FrameLayout(context)
     private val webViews = mutableMapOf<Int, WebView>()
     private val incognitoTabs = mutableSetOf<Int>()
@@ -54,6 +59,9 @@ class WebViewManager(
                 mediaPlaybackRequiresUserGesture = !config.autoPlayVideos
                 if (config.blockPopups) {
                     setSupportMultipleWindows(false)
+                }
+                if (config.useDesktopMode) {
+                    userAgentString = DESKTOP_UA
                 }
                 if (config.darkMode == "dark" && android.os.Build.VERSION.SDK_INT >= 28) {
                     @Suppress("DEPRECATION")
@@ -149,6 +157,12 @@ class WebViewManager(
             Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    fun applyDesktopMode(enabled: Boolean) {
+        webViews.forEach { wv ->
+            wv.settings.userAgentString = if (enabled) DESKTOP_UA else null
         }
     }
 
