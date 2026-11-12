@@ -36,7 +36,15 @@ class WebViewManager(
     }
 
     val container = FrameLayout(context)
-    val refreshLayout = SwipeRefreshLayout(context).apply {
+    val refreshLayout = object : SwipeRefreshLayout(context) {
+        override fun canChildScrollUp(): Boolean {
+            // WebView 滚到顶部（scrollY==0）才允许下拉刷新
+            webViews.values.lastOrNull()?.let { wv ->
+                return wv.scrollY > 0
+            }
+            return false
+        }
+    }.apply {
         addView(container)
         setProgressBackgroundColorSchemeColor(0xFF1E1E1E.toInt())
         setColorSchemeColors(0xFF2196F3.toInt())
