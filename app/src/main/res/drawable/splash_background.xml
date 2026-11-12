@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 黑色背景 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#000000"/>
+        </shape>
+    </item>
+
+    <!-- 彩色渐变圆 -->
+    <item
+        android:gravity="center"
+        android:width="96dp"
+        android:height="96dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="sweep"
+                android:startColor="#4CAF50"
+                android:centerColor="#2196F3"
+                android:endColor="#1565C0"/>
+        </shape>
+    </item>
+
+    <!-- N 图标（白色） -->
+    <item
+        android:gravity="center"
+        android:width="96dp"
+        android:height="96dp"
+        android:drawable="@drawable/ic_launcher_foreground"/>
+</layer-list>
