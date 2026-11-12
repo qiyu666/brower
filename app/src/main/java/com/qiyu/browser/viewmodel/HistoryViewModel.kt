@@ -20,6 +20,10 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             if (query.isEmpty()) repo.getAll() else repo.search(query)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val recentItems: StateFlow<List<HistoryItem>> =
+        repo.getAll().map { it.take(4) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
