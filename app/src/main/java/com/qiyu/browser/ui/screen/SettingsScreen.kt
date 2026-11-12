@@ -28,6 +28,7 @@ fun SettingsScreen(
     var homeInput by remember { mutableStateOf(config.homePage) }
     var engineDialog by remember { mutableStateOf(false) }
     var langDialog by remember { mutableStateOf(false) }
+    var downloadDirDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -134,6 +135,27 @@ fun SettingsScreen(
                 viewModel.setBlockPopups(!config.blockPopups)
             }
 
+            SettingRow(
+                icon = { Icon(Icons.Default.Computer, "", modifier = Modifier.size(20.dp)) },
+                title = "\u684c\u9762\u6a21\u5f0f",
+                value = if (config.useDesktopMode) AppStrings.t("on") else AppStrings.t("off")
+            ) {
+                viewModel.setUseDesktopMode(!config.useDesktopMode)
+            }
+
+            SettingRow(
+                icon = { Icon(Icons.Default.Folder, "", modifier = Modifier.size(20.dp)) },
+                title = "\u4e0b\u8f7d\u76ee\u5f55",
+                value = when (config.downloadDir) {
+                    "pictures" -> "\u56fe\u7247"
+                    "movies" -> "\u89c6\u9891"
+                    "music" -> "\u97f3\u4e50"
+                    else -> "\u9ed8\u8ba4"
+                }
+            ) {
+                downloadDirDialog = true
+            }
+
             // Homepage
             Spacer(modifier = Modifier.height(16.dp))
             SectionTitle(AppStrings.t("homepage"))
@@ -191,6 +213,44 @@ fun SettingsScreen(
                                 }
                                 .padding(vertical = 8.dp)
                         )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Download dir dialog
+    if (downloadDirDialog) {
+        AlertDialog(
+            onDismissRequest = { downloadDirDialog = false },
+            title = { Text("\u4e0b\u8f7d\u76ee\u5f55") },
+            text = {
+                Column {
+                    val dirs = listOf(
+                        "default" to "\u9ed8\u8ba4",
+                        "pictures" to "\u56fe\u7247",
+                        "movies" to "\u89c6\u9891",
+                        "music" to "\u97f3\u4e50"
+                    )
+                    dirs.forEach { (code, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setDownloadDir(code)
+                                    downloadDirDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (config.downloadDir == code) {
+                                Icon(Icons.Default.Check, "", tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(label, style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface)
+                        }
                     }
                 }
             },
