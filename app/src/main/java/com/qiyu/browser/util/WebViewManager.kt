@@ -5,10 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.FrameLayout
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.qiyu.browser.data.repository.SettingsRepository
 import com.qiyu.browser.model.BrowserConfig
 
@@ -33,6 +36,17 @@ class WebViewManager(
     }
 
     val container = FrameLayout(context)
+    val refreshLayout = SwipeRefreshLayout(context).apply {
+        addView(container)
+        setProgressBackgroundColorSchemeColor(0xFF1E1E1E.toInt())
+        setColorSchemeColors(0xFF2196F3.toInt())
+        setOnRefreshListener {
+            webViews.values.lastOrNull()?.let { wv ->
+                wv.reload()
+            }
+            Handler(Looper.getMainLooper()).postDelayed({ isRefreshing = false }, 2000)
+        }
+    }
     private val webViews = mutableMapOf<Int, WebView>()
     private val incognitoTabs = mutableSetOf<Int>()
     private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
@@ -157,6 +171,20 @@ class WebViewManager(
             Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    fun pauseTab(tabId: Int) {
+        webViews[tabId]?.let { wv ->
+            wv.onPause()
+            wv.pauseTimers()
+        }
+    }
+
+    fun resumeTab(tabId: Int) {
+        webViews[tabId]?.let { wv ->
+            wv.onResume()
+            wv.resumeTimers()
         }
     }
 
