@@ -96,8 +96,13 @@ class WebViewManager(
             }
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
-            setDownloadListener { url, _, _, mimeType, _ ->
-                val fileName = WebUtils.getFileNameFromUrl(url)
+            setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+                val fileName = contentDisposition
+                    ?.substringAfter("filename=", "")
+                    ?.substringAfter("filename*=", "")
+                    ?.split(";").firstOrNull()?.trim().removeSurrounding("\"")
+                    ?.takeIf { it.isNotEmpty() && !it.contains(" ") }
+                    ?: WebUtils.getFileNameFromUrl(url)
                 listener.onDownloadRequested(tabId, url, fileName, mimeType)
             }
             visibility = View.GONE
