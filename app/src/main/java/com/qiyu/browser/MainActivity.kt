@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             @Suppress("DEPRECATION")
                             val file = File(
-                                android.os.Environment.getExternalStoragePublicDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+                                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
                                 resolvedName
                             )
                             request.setDestination(android.net.Uri.fromFile(file))
