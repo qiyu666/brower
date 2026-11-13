@@ -130,7 +130,9 @@ private fun DownloadItemRow(
     onDelete: () -> Unit
 ) {
     val statusText = when (item.status) {
-        DownloadStatus.IN_PROGRESS -> "${item.downloadedSize * 100 / (item.fileSize.coerceAtLeast(1))}%"
+        DownloadStatus.IN_PROGRESS ->
+            if (item.fileSize > 0) "${item.downloadedSize * 100 / item.fileSize}%"
+            else WebUtils.formatFileSize(item.downloadedSize)
         DownloadStatus.COMPLETED -> "Completed"
         DownloadStatus.FAILED -> "Failed"
         DownloadStatus.CANCELLED -> "Cancelled"

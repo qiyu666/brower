@@ -56,7 +56,6 @@ fun BrowserScreen(
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onShare: (String, String) -> Unit,
-    onDownload: (String, String?, String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()

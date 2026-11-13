@@ -45,10 +45,7 @@ fun BrowserNavHost(
                 onNavigateToHistory = { navController.navigate(Destinations.HISTORY) },
                 onNavigateToDownloads = { navController.navigate(Destinations.DOWNLOADS) },
                 onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) },
-                onShare = onShare,
-                onDownload = { url, fileName, mimeType ->
-                    onOpenFile(url)
-                }
+                onShare = onShare
             )
         }
         composable(Destinations.BOOKMARKS) {

@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.provider.DocumentsContract
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.qiyu.browser.MainActivity
 import com.qiyu.browser.NovaBrowserApp
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
@@ -117,6 +118,7 @@ class DownloadService : Service() {
         val app = application as NovaBrowserApp
         val repo = app.downloadRepository
         val config = app.settingsRepository.config.value
+        val base = repo.getById(downloadId) ?: DownloadItem(url = url, fileName = fileName, mimeType = mimeType)
 
         try {
             android.util.Log.d("QiyuDownload", "url=$url fileName=$fileName mimeType=$mimeType")
@@ -135,7 +137,8 @@ class DownloadService : Service() {
                 throw Exception("HTTP $code: ${connection.responseMessage}")
             }
 
-            val totalSize = connection.contentLength.toLong()
+            var totalSize = connection.contentLength.toLong()
+            var downloaded = 0L
             val filePath: String
 
             if (config.downloadDir.startsWith("content://")) {
@@ -150,7 +153,6 @@ class DownloadService : Service() {
                 connection.inputStream.use { input ->
                     contentResolver.openOutputStream(docUri)?.use { output ->
                         val buffer = ByteArray(8192)
-                        var downloaded = 0L
                         var lastUpdate = 0L
                         while (true) {
                             val read = input.read(buffer)
@@ -158,15 +160,14 @@ class DownloadService : Service() {
                             output.write(buffer, 0, read)
                             downloaded += read
                             val now = System.currentTimeMillis()
-                            if (now - lastUpdate > 500 && totalSize > 0) {
+                            if (now - lastUpdate > 500) {
                                 lastUpdate = now
                                 withContext(Dispatchers.Main) {
-                                    repo.update(DownloadItem(
-                                        id = downloadId, url = url, fileName = fileName,
-                                        filePath = filePath, mimeType = mimeType,
-                                        fileSize = totalSize, downloadedSize = downloaded,
-                                        status = DownloadStatus.IN_PROGRESS,
-                                        createdAt = System.currentTimeMillis()
+                                    repo.update(base.copy(
+                                        filePath = filePath,
+                                        fileSize = if (totalSize > 0) totalSize else -1,
+                                        downloadedSize = downloaded,
+                                        status = DownloadStatus.IN_PROGRESS
                                     ))
                                 }
                             }
@@ -189,7 +190,6 @@ class DownloadService : Service() {
                 connection.inputStream.use { input ->
                     file.outputStream().use { output ->
                         val buffer = ByteArray(8192)
-                        var downloaded = 0L
                         var lastUpdate = 0L
                         while (true) {
                             val read = input.read(buffer)
@@ -197,15 +197,14 @@ class DownloadService : Service() {
                             output.write(buffer, 0, read)
                             downloaded += read
                             val now = System.currentTimeMillis()
-                            if (now - lastUpdate > 500 && totalSize > 0) {
+                            if (now - lastUpdate > 500) {
                                 lastUpdate = now
                                 withContext(Dispatchers.Main) {
-                                    repo.update(DownloadItem(
-                                        id = downloadId, url = url, fileName = fileName,
-                                        filePath = filePath, mimeType = mimeType,
-                                        fileSize = totalSize, downloadedSize = downloaded,
-                                        status = DownloadStatus.IN_PROGRESS,
-                                        createdAt = System.currentTimeMillis()
+                                    repo.update(base.copy(
+                                        filePath = filePath,
+                                        fileSize = if (totalSize > 0) totalSize else -1,
+                                        downloadedSize = downloaded,
+                                        status = DownloadStatus.IN_PROGRESS
                                     ))
                                 }
                             }
@@ -215,31 +214,26 @@ class DownloadService : Service() {
             }
 
             connection.disconnect()
+            if (totalSize < 0) totalSize = downloaded
 
             // Mark as completed
             val svc = this
             withContext(Dispatchers.Main) {
-                repo.update(
-                    DownloadItem(
-                        id = downloadId,
-                        url = url,
-                        fileName = fileName,
-                        filePath = filePath,
-                        mimeType = mimeType,
-                        fileSize = totalSize,
-                        downloadedSize = totalSize,
-                        status = DownloadStatus.COMPLETED,
-                        createdAt = System.currentTimeMillis()
-                    )
-                )
+                repo.update(base.copy(
+                    filePath = filePath,
+                    fileSize = totalSize,
+                    downloadedSize = totalSize,
+                    status = DownloadStatus.COMPLETED
+                ))
 
-                // 完成通知
-                val openIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    putExtra(android.content.Intent.EXTRA_TEXT, filePath)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                // 完成通知：点击跳转应用内下载列表
+                val openIntent = Intent(svc, MainActivity::class.java).apply {
+                    putExtra(MainActivity.EXTRA_OPEN_DOWNLOADS, true)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                val pending = android.app.PendingIntent.getActivity(
-                    svc, 0, openIntent, android.app.PendingIntent.FLAG_IMMUTABLE
+                val pending = PendingIntent.getActivity(
+                    svc, 0, openIntent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
                 val doneNotification = NotificationCompat.Builder(svc, CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -259,16 +253,7 @@ class DownloadService : Service() {
         } catch (e: Exception) {
             android.util.Log.e("QiyuDownload", "download failed: url=$url", e)
             withContext(Dispatchers.Main) {
-                repo.update(
-                    DownloadItem(
-                        id = downloadId,
-                        url = url,
-                        fileName = fileName,
-                        mimeType = mimeType,
-                        status = DownloadStatus.FAILED,
-                        createdAt = System.currentTimeMillis()
-                    )
-                )
+                repo.update(base.copy(status = DownloadStatus.FAILED))
                 activeDownloads--
                 if (activeDownloads <= 0) {
                     stopSelf()

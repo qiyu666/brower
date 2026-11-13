@@ -20,6 +20,7 @@ import android.os.Environment
 import android.net.Uri
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.navigation.BrowserNavHost
+import com.qiyu.browser.navigation.Destinations
 import com.qiyu.browser.service.DownloadService
 import com.qiyu.browser.ui.theme.NovaBrowserTheme
 import com.qiyu.browser.util.WebUtils
@@ -31,6 +32,10 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        const val EXTRA_OPEN_DOWNLOADS = "open_downloads"
+    }
+
     lateinit var webManager: WebViewManager
     lateinit var tabsVM: TabsViewModel
     lateinit var bookmarksVM: BookmarksViewModel
@@ -39,6 +44,7 @@ class MainActivity : ComponentActivity() {
     lateinit var settingsVM: SettingsViewModel
     private var navController: androidx.navigation.NavHostController? = null
     private var backCallback: OnBackPressedCallback? = null
+    private var pendingOpenDownloads = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,10 +90,23 @@ class MainActivity : ComponentActivity() {
             override fun onNewPage(tabId: Int, url: String) {}
 
             override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?) {
-                // 下载功能已移除，不处理
+                val isIncognito = tabsVM.tabs.value.find { it.id == tabId }?.isIncognito ?: false
+                lifecycleScope.launch {
+                    val app = application as NovaBrowserApp
+                    val finalName = fileName ?: WebUtils.getFileNameFromUrl(url)
+                    val id = app.downloadRepository.add(
+                        DownloadItem(url = url, fileName = finalName, mimeType = mimeType, isIncognito = isIncognito)
+                    )
+                    DownloadService.start(this@MainActivity, url, finalName, mimeType, id)
+                }
             }
         })
 
+        intent?.let { data ->
+            if (data.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)) {
+                pendingOpenDownloads = true
+            }
+        }
         intent?.data?.let { uri ->
             val tabId = tabsVM.addTab(uri.toString())
             webManager.createWebView(tabId, false)
@@ -121,6 +140,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val nav = rememberNavController()
                     navController = nav
+
+                    if (pendingOpenDownloads) {
+                        pendingOpenDownloads = false
+                        LaunchedEffect(Unit) { nav.navigate(Destinations.DOWNLOADS) }
+                    }
 
                     BrowserNavHost(
                         navController = nav,
@@ -189,16 +213,25 @@ class MainActivity : ComponentActivity() {
 
     private fun openFile(path: String) {
         try {
-            val file = File(path)
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                this, "$packageName.fileprovider", file
-            )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/octet-stream")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val intent = if (path.startsWith("content://")) {
+                Intent(Intent.ACTION_VIEW, Uri.parse(path))
+            } else {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, "$packageName.fileprovider", File(path)
+                )
+                Intent(Intent.ACTION_VIEW, uri)
             }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             startActivity(intent)
         } catch (e: Exception) {
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)) {
+            navController?.takeIf { it.currentDestination?.id != Destinations.DOWNLOADS }
+                ?.navigate(Destinations.DOWNLOADS)
         }
     }
 
