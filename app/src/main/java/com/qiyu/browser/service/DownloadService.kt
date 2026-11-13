@@ -121,7 +121,11 @@ class DownloadService : Service() {
         try {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 30_000
-            connection.readTimeout = 30_000
+            connection.readTimeout = 60_000
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent",
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+            connection.setRequestProperty("Accept", "*/*")
             connection.connect()
 
             val totalSize = connection.contentLength.toLong()
