@@ -164,12 +164,13 @@ class DownloadService : Service() {
                 }
             } else {
                 // 应用内部目录
-                val downloadDir = when (config.downloadDir) {
-                    "pictures" -> File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "downloads")
-                    "movies" -> File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "downloads")
-                    "music" -> File(getExternalFilesDir(Environment.DIRECTORY_MUSIC), "downloads")
-                    else -> File(getExternalFilesDir(null), "downloads")
-                }
+                val baseDir = when (config.downloadDir) {
+                    "pictures" -> getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+                    "movies" -> getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+                    "music" -> getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                    else -> getExternalFilesDir(null)
+                } ?: throw Exception("External storage not available")
+                val downloadDir = File(baseDir, "downloads")
                 if (!downloadDir.exists()) downloadDir.mkdirs()
                 val file = File(downloadDir, fileName)
                 filePath = file.absolutePath
@@ -219,6 +220,22 @@ class DownloadService : Service() {
                         createdAt = System.currentTimeMillis()
                     )
                 )
+
+                // 完成通知
+                val openIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    putExtra(android.content.Intent.EXTRA_TEXT, filePath)
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val pending = androidx.core.app.ActivityOptionsCompat.makeBasic()
+                    .toPendingIntent(this, 0, null)
+                val doneNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle("\u4e0b\u8f7d\u5b8c\u6210")
+                    .setContentText(fileName)
+                    .setContentIntent(openIntent)
+                    .setOngoing(false)
+                    .build()
+                notificationManager.notify(downloadId.toInt(), doneNotification)
 
                 activeDownloads--
                 if (activeDownloads <= 0) {
