@@ -84,25 +84,7 @@ class MainActivity : ComponentActivity() {
             override fun onNewPage(tabId: Int, url: String) {}
 
             override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?) {
-                val resolvedName = fileName?.ifEmpty { null } ?: WebUtils.getFileNameFromUrl(url)
-                lifecycleScope.launch {
-                    val downloadItem = DownloadItem(url = url, fileName = resolvedName, mimeType = mimeType)
-                    val downloadId = app.downloadRepository.add(downloadItem)
-                    try {
-                        val dm = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
-                        val request = DownloadManager.Request(Uri.parse(url))
-                            .setTitle(resolvedName)
-                            .setNotificationVisibility(2) // VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                        if (android.os.Build.VERSION.SDK_INT >= 29) {
-                            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, resolvedName)
-                        }
-                        dm.enqueue(request)
-                    } catch (e: Exception) {
-                        app.downloadRepository.update(
-                            downloadItem.copy(status = com.qiyu.browser.model.DownloadStatus.FAILED)
-                        )
-                    }
-                }
+                // 下载功能已移除，不处理
             }
         })
 
