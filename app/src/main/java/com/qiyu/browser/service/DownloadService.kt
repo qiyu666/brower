@@ -206,6 +206,7 @@ class DownloadService : Service() {
             connection.disconnect()
 
             // Mark as completed
+            val svc = this
             withContext(Dispatchers.Main) {
                 repo.update(
                     DownloadItem(
@@ -227,16 +228,16 @@ class DownloadService : Service() {
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 val pending = android.app.PendingIntent.getActivity(
-                    this, 0, openIntent, android.app.PendingIntent.FLAG_IMMUTABLE
+                    svc, 0, openIntent, android.app.PendingIntent.FLAG_IMMUTABLE
                 )
-                val doneNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                val doneNotification = NotificationCompat.Builder(svc, CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("\u4e0b\u8f7d\u5b8c\u6210")
                     .setContentText(fileName)
                     .setContentIntent(pending)
                     .setOngoing(false)
                     .build()
-                notificationManager.notify(downloadId.toInt(), doneNotification)
+                svc.notificationManager.notify(downloadId.toInt(), doneNotification)
 
                 activeDownloads--
                 if (activeDownloads <= 0) {
