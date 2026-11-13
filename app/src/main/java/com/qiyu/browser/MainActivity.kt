@@ -85,7 +85,29 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch {
                     val downloadItem = DownloadItem(url = url, fileName = resolvedName, mimeType = mimeType)
                     val downloadId = app.downloadRepository.add(downloadItem)
-                    DownloadService.start(this@MainActivity, url, resolvedName, mimeType, downloadId)
+                    try {
+                        val dm = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                            .setTitle(resolvedName)
+                            .setNotificationVisibility(android.app.DownloadManager.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        if (android.os.Build.VERSION.SDK_INT >= 29) {
+                            request.setDestinationInExternalPublicDir(
+                                android.os.Environment.DIRECTORY_DOWNLOADS, resolvedName
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            val file = File(
+                                android.os.Environment.getExternalStoragePublicDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+                                resolvedName
+                            )
+                            request.setDestination(android.net.Uri.fromFile(file))
+                        }
+                        dm.enqueue(request)
+                    } catch (e: Exception) {
+                        app.downloadRepository.update(
+                            downloadItem.copy(status = com.qiyu.browser.model.DownloadStatus.FAILED)
+                        )
+                    }
                 }
             }
         })
