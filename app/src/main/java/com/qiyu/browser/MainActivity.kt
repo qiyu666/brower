@@ -92,13 +92,9 @@ class MainActivity : ComponentActivity() {
                         val dm = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
                         val request = DownloadManager.Request(Uri.parse(url))
                             .setTitle(resolvedName)
-                            .setNotificationVisibility(DownloadManager.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            .setNotificationVisibility(2) // VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                         if (android.os.Build.VERSION.SDK_INT >= 29) {
                             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, resolvedName)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), resolvedName)
-                            request.setDestination(Uri.fromFile(file))
                         }
                         dm.enqueue(request)
                     } catch (e: Exception) {
