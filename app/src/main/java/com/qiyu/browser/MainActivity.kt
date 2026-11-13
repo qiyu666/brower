@@ -15,6 +15,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import android.app.DownloadManager
+import android.os.Environment
+import android.net.Uri
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.navigation.BrowserNavHost
 import com.qiyu.browser.service.DownloadService
@@ -86,21 +89,16 @@ class MainActivity : ComponentActivity() {
                     val downloadItem = DownloadItem(url = url, fileName = resolvedName, mimeType = mimeType)
                     val downloadId = app.downloadRepository.add(downloadItem)
                     try {
-                        val dm = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                        val dm = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
+                        val request = DownloadManager.Request(Uri.parse(url))
                             .setTitle(resolvedName)
-                            .setNotificationVisibility(android.app.DownloadManager.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            .setNotificationVisibility(DownloadManager.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                         if (android.os.Build.VERSION.SDK_INT >= 29) {
-                            request.setDestinationInExternalPublicDir(
-                                android.os.Environment.DIRECTORY_DOWNLOADS, resolvedName
-                            )
+                            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, resolvedName)
                         } else {
                             @Suppress("DEPRECATION")
-                            val file = File(
-                                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
-                                resolvedName
-                            )
-                            request.setDestination(android.net.Uri.fromFile(file))
+                            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), resolvedName)
+                            request.setDestination(Uri.fromFile(file))
                         }
                         dm.enqueue(request)
                     } catch (e: Exception) {
