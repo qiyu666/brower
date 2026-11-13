@@ -100,7 +100,10 @@ class WebViewManager(
                 val fileName = contentDisposition
                     ?.substringAfter("filename=", "")
                     ?.substringAfter("filename*=", "")
-                    ?.split(";").firstOrNull()?.trim().removeSurrounding("\"")
+                    ?.split(";")
+                    ?.firstOrNull()
+                    ?.trim()
+                    ?.removeSurrounding("\"")
                     ?.takeIf { it.isNotEmpty() && !it.contains(" ") }
                     ?: WebUtils.getFileNameFromUrl(url)
                 listener.onDownloadRequested(tabId, url, fileName, mimeType)
