@@ -119,6 +119,7 @@ class DownloadService : Service() {
         val config = app.settingsRepository.config.value
 
         try {
+            android.util.Log.d("QiyuDownload", "url=$url fileName=$fileName mimeType=$mimeType")
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 30_000
             connection.readTimeout = 60_000
@@ -127,6 +128,12 @@ class DownloadService : Service() {
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
             connection.setRequestProperty("Accept", "*/*")
             connection.connect()
+
+            val code = connection.responseCode
+            android.util.Log.d("QiyuDownload", "responseCode=$code")
+            if (code != 200) {
+                throw Exception("HTTP $code: ${connection.responseMessage}")
+            }
 
             val totalSize = connection.contentLength.toLong()
             val filePath: String
@@ -250,6 +257,7 @@ class DownloadService : Service() {
                 }
             }
         } catch (e: Exception) {
+            android.util.Log.e("QiyuDownload", "download failed: url=$url", e)
             withContext(Dispatchers.Main) {
                 repo.update(
                     DownloadItem(
