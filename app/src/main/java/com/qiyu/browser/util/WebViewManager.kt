@@ -33,6 +33,34 @@ class WebViewManager(
     companion object {
         private const val DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        /**
+         * 页面点击时记录「blob URL → 锚点 download 属性名」快照。
+         * 很多站点用临时锚点（点击后立即从 DOM 移除），下载时再查 DOM 已找不到，
+         * 所以在点击瞬间（捕获阶段）就把名字记下来。
+         */
+        private const val DOWNLOAD_NAME_HOOK_JS = """
+            (function(){
+              if (window.__dlNamesInstalled) return;
+              window.__dlNamesInstalled = true;
+              window.__dlNames = window.__dlNames || {};
+              document.addEventListener('click', function(ev){
+                try {
+                  var el = ev.target;
+                  while (el && el.nodeType !== 1) el = el.parentNode;
+                  if (!el) return;
+                  var a = null;
+                  if (el.tagName === 'A' && el.hasAttribute('download')) a = el;
+                  else if (el.querySelector) a = el.querySelector('a[download]');
+                  if (!a && el.closest) a = el.closest('a[download]');
+                  if (a) {
+                    var href = a.getAttribute('href') || '';
+                    if (href) window.__dlNames[href] = a.getAttribute('download') || '';
+                  }
+                } catch (e) {}
+              }, true);
+            })();
+            """.trimIndent()
     }
 
     val container = FrameLayout(context)
@@ -273,6 +301,7 @@ class WebViewManager(
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                view?.evaluateJavascript(DOWNLOAD_NAME_HOOK_JS, null)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
             }
 

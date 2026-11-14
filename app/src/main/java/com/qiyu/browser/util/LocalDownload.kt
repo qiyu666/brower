@@ -79,9 +79,9 @@ object LocalDownload {
                 throw Exception("blob 文件过大（${total / 1024 / 1024}MB，上限 ${MAX_SIZE / 1024 / 1024}MB）")
             }
 
-            // 真实文件名：优先取页面锚点的 download 属性，其次按 MIME 生成
+            // 真实文件名：优先取点击时记录的锚点 download 名，其次 DOM 锚点，最后按 MIME 生成
             val mime = jsEval(webView, "window['$key.mime']||''").ifEmpty { null }
-            val anchorName = jsEval(webView, anchorNameScript(url))
+            val anchorName = jsEval(webView, nameLookupScript(url))
             val saveName = when {
                 anchorName.isNotEmpty() -> anchorName
                 mime != null -> defaultName(mime)
@@ -136,11 +136,13 @@ object LocalDownload {
             "for(var i=0;i<u8.length;i+=32768){s+=String.fromCharCode.apply(null,u8.subarray(i,Math.min(i+32768,u8.length)));}" +
             "return btoa(s);})()"
 
-    /** 页面里找 href 等于该 blob URL 的锚点，返回它的 download 属性（真实文件名） */
-    private fun anchorNameScript(url: String): String {
+    /** 真实文件名：优先用点击时记录的快照（临时锚点已移除时 DOM 查不到），其次 DOM 锚点，取不到则交给 MIME 兜底 */
+    private fun nameLookupScript(url: String): String {
         val safe = url.replace("\\", "\\\\").replace("\"", "\\\"")
-        return "(function(){var t=\"$safe\";var ls=document.links;for(var i=0;i<ls.length;i++){" +
-            "if(ls[i].href===t&&ls[i].download)return ls[i].download;}return '';})()"
+        return "(function(){var t=\"$safe\";var n='';" +
+            "if(window.__dlNames){n=window.__dlNames[t]||'';}" +
+            "if(!n){var ls=document.links;for(var i=0;i<ls.length;i++){if(ls[i].href===t&&ls[i].download){n=ls[i].download;break;}}}" +
+            "return n;})()"
     }
 
     suspend fun fromDataUri(
