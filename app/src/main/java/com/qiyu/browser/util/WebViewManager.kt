@@ -47,12 +47,19 @@ class WebViewManager(
               if (window.__dlNamesInstalled) return;
               window.__dlNamesInstalled = true;
               window.__dlNames = window.__dlNames || {};
+              window.__dlBlobCache = window.__dlBlobCache || {};
               function record(a){
                 try {
                   if (!a) return;
                   var href = a.href || a.getAttribute('href') || '';
                   var name = a.download || a.getAttribute('download') || '';
                   if (href && name) window.__dlNames[href] = name;
+                  // 预缓存 blob 数据：站点常在点击后 ~100ms 就 revokeObjectURL，
+                  // 之后 Android 侧再 fetch 该 URL 会失败。这里在点击瞬间先 fetch 存成 Promise，
+                  // revoke 只令 URL 字符串失效，不影响已持有的 Blob。
+                  if (href && href.indexOf('blob:') === 0 && !window.__dlBlobCache[href]) {
+                    window.__dlBlobCache[href] = fetch(href).then(function(r){ return r.blob(); });
+                  }
                 } catch(e){}
               }
               document.addEventListener('click', function(ev){

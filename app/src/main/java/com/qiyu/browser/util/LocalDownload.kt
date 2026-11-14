@@ -45,8 +45,9 @@ object LocalDownload {
             val jsUrl = url.replace("\\", "\\\\").replace("'", "\\'")
             withContext(Dispatchers.Main) {
                 webView.evaluateJavascript(
-                    "fetch('$jsUrl').then(function(r){return r.blob();})" +
-                        ".then(function(b){window['$key.mime']=b.type||'';return b.arrayBuffer();})" +
+                    "var u='$jsUrl';var p=(window.__dlBlobCache&&window.__dlBlobCache[u])" +
+                        "||fetch(u).then(function(r){return r.blob();});" +
+                        "p.then(function(b){window['$key.mime']=b.type||'';return b.arrayBuffer();})" +
                         ".then(function(ab){window['$key.buf']=ab;window['$key.total']=ab.byteLength;window['$key.ready']=true;})" +
                         ".catch(function(e){window['$key.err']=String(e);window['$key.ready']=true;});'ok'",
                     null
@@ -115,7 +116,8 @@ object LocalDownload {
             }
             withContext(Dispatchers.Main) {
                 webView.evaluateJavascript(
-                    "window['$key.buf']=null;window['$key.total']=null;window['$key.err']=null;window['$key.mime']=null;window['$key.ready']=null;'ok'",
+                    "window['$key.buf']=null;window['$key.total']=null;window['$key.err']=null;window['$key.mime']=null;window['$key.ready']=null;" +
+                        "try{if(window.__dlBlobCache)delete window.__dlBlobCache['$jsUrl'];}catch(e){}'ok'",
                     null
                 )
             }
