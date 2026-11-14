@@ -45,8 +45,9 @@ object LocalDownload {
             val jsUrl = url.replace("\\", "\\\\").replace("'", "\\'")
             withContext(Dispatchers.Main) {
                 webView.evaluateJavascript(
-                    "fetch('$jsUrl').then(function(r){return r.arrayBuffer();})" +
-                        ".then(function(b){window['$key.buf']=b;window['$key.total']=b.byteLength;window['$key.ready']=true;})" +
+                    "fetch('$jsUrl').then(function(r){return r.blob();})" +
+                        ".then(function(b){window['$key.mime']=b.type||'';return b.arrayBuffer();})" +
+                        ".then(function(ab){window['$key.buf']=ab;window['$key.total']=ab.byteLength;window['$key.ready']=true;})" +
                         ".catch(function(e){window['$key.err']=String(e);window['$key.ready']=true;});'ok'",
                     null
                 )
@@ -78,7 +79,16 @@ object LocalDownload {
                 throw Exception("blob 文件过大（${total / 1024 / 1024}MB，上限 ${MAX_SIZE / 1024 / 1024}MB）")
             }
 
-            val target = openTarget(context, config, fileName, null)
+            // 真实文件名：优先取页面锚点的 download 属性，其次按 MIME 生成
+            val mime = jsEval(webView, "window['$key.mime']||''").ifEmpty { null }
+            val anchorName = jsEval(webView, anchorNameScript(url))
+            val saveName = when {
+                anchorName.isNotEmpty() -> anchorName
+                mime != null -> defaultName(mime)
+                else -> fileName
+            }
+
+            val target = openTarget(context, config, saveName, mime)
             var off = 0L
             var lastUpdate = 0L
             target.second.use { os ->
@@ -95,6 +105,7 @@ object LocalDownload {
                             filePath = target.first,
                             fileSize = total,
                             downloadedSize = off,
+                            mimeType = mime,
                             status = DownloadStatus.IN_PROGRESS
                         ))
                     }
@@ -102,11 +113,13 @@ object LocalDownload {
             }
             withContext(Dispatchers.Main) {
                 webView.evaluateJavascript(
-                    "window['$key.buf']=null;window['$key.total']=null;window['$key.err']=null;window['$key.ready']=null;'ok'",
+                    "window['$key.buf']=null;window['$key.total']=null;window['$key.err']=null;window['$key.mime']=null;window['$key.ready']=null;'ok'",
                     null
                 )
             }
             repo.update(base.copy(
+                fileName = saveName,
+                mimeType = mime,
                 filePath = target.first,
                 fileSize = total,
                 downloadedSize = total,
@@ -122,6 +135,13 @@ object LocalDownload {
         "(function(){var u8=new Uint8Array(window['$key.buf'],$off,$len);var s='';" +
             "for(var i=0;i<u8.length;i+=32768){s+=String.fromCharCode.apply(null,u8.subarray(i,Math.min(i+32768,u8.length)));}" +
             "return btoa(s);})()"
+
+    /** 页面里找 href 等于该 blob URL 的锚点，返回它的 download 属性（真实文件名） */
+    private fun anchorNameScript(url: String): String {
+        val safe = url.replace("\\", "\\\\").replace("\"", "\\\"")
+        return "(function(){var t=\"$safe\";var ls=document.links;for(var i=0;i<ls.length;i++){" +
+            "if(ls[i].href===t&&ls[i].download)return ls[i].download;}return '';})()"
+    }
 
     suspend fun fromDataUri(
         context: Context,
@@ -169,10 +189,13 @@ object LocalDownload {
             "image/webp" -> "webp"
             "image/gif" -> "gif"
             "application/pdf" -> "pdf"
+            "audio/mpeg" -> "mp3"
+            "audio/mp4" -> "m4a"
+            "audio/ogg" -> "ogg"
+            "audio/wav" -> "wav"
             "video/mp4" -> "mp4"
             "video/webm" -> "webm"
-            "audio/mpeg" -> "mp3"
-            "audio/wav" -> "wav"
+            "video/x-m4v" -> "m4v"
             "application/json" -> "json"
             "text/csv" -> "csv"
             "text/plain" -> "txt"
