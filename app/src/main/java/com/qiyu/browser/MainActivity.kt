@@ -231,7 +231,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)) {
             navController?.let { nav ->
-                if (nav.currentDestination?.id != nav.graph.findNode(Destinations.DOWNLOADS).id) {
+                if (nav.currentDestination?.id != nav.graph.findNode(Destinations.DOWNLOADS)?.id) {
                     nav.navigate(Destinations.DOWNLOADS)
                 }
             }
