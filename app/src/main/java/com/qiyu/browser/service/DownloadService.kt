@@ -27,6 +27,7 @@ class DownloadService : Service() {
     companion object {
         const val CHANNEL_ID = "nova_downloads"
         const val NOTIFICATION_ID_BASE = 10000
+        const val PROGRESS_NOTIFICATION_ID = 10001
 
         const val EXTRA_URL = "url"
         const val EXTRA_FILE_NAME = "file_name"
@@ -216,6 +217,9 @@ class DownloadService : Service() {
                                         status = DownloadStatus.IN_PROGRESS
                                     ))
                                 }
+                                if (totalSize > 0) {
+                                    notificationManager.notify(PROGRESS_NOTIFICATION_ID, buildNotification(effectiveName, (downloaded * 100 / totalSize).toInt(), false))
+                                }
                             }
                         }
                     }
@@ -252,6 +256,9 @@ class DownloadService : Service() {
                                         downloadedSize = downloaded,
                                         status = DownloadStatus.IN_PROGRESS
                                     ))
+                                }
+                                if (totalSize > 0) {
+                                    notificationManager.notify(PROGRESS_NOTIFICATION_ID, buildNotification(effectiveName, (downloaded * 100 / totalSize).toInt(), false))
                                 }
                             }
                         }
@@ -290,12 +297,14 @@ class DownloadService : Service() {
                     .setOngoing(false)
                     .build()
                 svc.notificationManager.notify(downloadId.toInt(), doneNotification)
+                svc.notificationManager.cancel(PROGRESS_NOTIFICATION_ID)
                 android.widget.Toast.makeText(svc, "下载完成：$effectiveName", android.widget.Toast.LENGTH_SHORT).show()
 
                 activeDownloads--
                 if (activeDownloads <= 0) {
                     stopSelf()
                     notificationManager.cancel(NOTIFICATION_ID_BASE)
+                    notificationManager.cancel(PROGRESS_NOTIFICATION_ID)
                 }
             }
         } catch (e: Exception) {
@@ -309,6 +318,7 @@ class DownloadService : Service() {
                 if (activeDownloads <= 0) {
                     stopSelf()
                     notificationManager.cancel(NOTIFICATION_ID_BASE)
+                    notificationManager.cancel(PROGRESS_NOTIFICATION_ID)
                 }
             }
         }
