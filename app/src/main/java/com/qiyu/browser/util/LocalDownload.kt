@@ -137,13 +137,13 @@ object LocalDownload {
         }
     }
 
-    private fun toastCompleted(context: Context, fileName: String) {
+    private suspend fun toastCompleted(context: Context, fileName: String) {
         withContext(Dispatchers.Main) {
             android.widget.Toast.makeText(context, "下载完成：$fileName", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun toastFailed(context: Context, e: Exception) {
+    private suspend fun toastFailed(context: Context, e: Exception) {
         withContext(Dispatchers.Main) {
             android.widget.Toast.makeText(context, "下载失败：${e.message ?: e.javaClass.simpleName}", android.widget.Toast.LENGTH_LONG).show()
         }

@@ -33,7 +33,7 @@ object LocalNotification {
                 .setShowWhen(false)
             if (total > 0) builder.setProgress(100, (downloaded * 100 / total).toInt(), false)
             context.getSystemService(NotificationManager::class.java)
-                .notify(BASE_ID + (downloadId % 8000), builder.build())
+                .notify((BASE_ID + (downloadId % 8000)).toInt(), builder.build())
         } catch (e: Exception) {
         }
     }
@@ -57,7 +57,7 @@ object LocalNotification {
                 .setOngoing(false)
                 .setAutoCancel(true)
                 .build()
-            context.getSystemService(NotificationManager::class.java).notify(BASE_ID + 1 + (downloadId % 8000), n)
+            context.getSystemService(NotificationManager::class.java).notify((BASE_ID + 1 + (downloadId % 8000)).toInt(), n)
         } catch (e: Exception) {
         }
     }
@@ -65,7 +65,7 @@ object LocalNotification {
     fun cancel(context: Context, downloadId: Long) {
         try {
             context.getSystemService(NotificationManager::class.java)
-                .cancel(BASE_ID + (downloadId % 8000))
+                .cancel((BASE_ID + (downloadId % 8000)).toInt())
         } catch (e: Exception) {
         }
     }
