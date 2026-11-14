@@ -6,18 +6,19 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.webkit.ValueCallback
 import android.webkit.WebView
-import androidx.core.util.Base64
 import com.qiyu.browser.data.repository.DownloadRepository
 import com.qiyu.browser.model.BrowserConfig
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.util.Base64
 import kotlin.math.min
 
 /**
@@ -84,7 +85,7 @@ object LocalDownload {
                 while (off < total) {
                     val len = min(CHUNK, (total - off).toInt())
                     val b64 = jsEval(webView, chunkScript(key, off, len))
-                    val bytes = Base64.decode(b64, Base64.DEFAULT)
+                    val bytes = Base64.getDecoder().decode(b64)
                     os.write(bytes)
                     off += bytes.size
                     val now = System.currentTimeMillis()
@@ -140,7 +141,7 @@ object LocalDownload {
             val isB64 = head.contains(";base64", ignoreCase = true)
             val mime = head.substringBefore(';').ifEmpty { "application/octet-stream" }
             val bytes = if (isB64) {
-                Base64.decode(payload.replace("\n", "").replace("\r", ""), Base64.DEFAULT)
+                Base64.getDecoder().decode(payload.replace("\n", "").replace("\r", ""))
             } else {
                 Uri.decode(payload).toByteArray()
             }
@@ -151,8 +152,8 @@ object LocalDownload {
                 fileName = name,
                 mimeType = mime,
                 filePath = target.first,
-                fileSize = bytes.size,
-                downloadedSize = bytes.size,
+                fileSize = bytes.size.toLong(),
+                downloadedSize = bytes.size.toLong(),
                 status = DownloadStatus.COMPLETED
             ))
         } catch (e: Exception) {
@@ -178,7 +179,7 @@ object LocalDownload {
             "application/zip" -> "zip"
             else -> null
         }
-        return if (ext != null) "data-$System.currentTimeMillis().$ext" else "download"
+        return if (ext != null) "data-${System.currentTimeMillis()}.$ext" else "download"
     }
 
     private suspend fun openTarget(context: Context, config: BrowserConfig, fileName: String, mime: String?): Pair<String, OutputStream> =
@@ -204,15 +205,16 @@ object LocalDownload {
             }
         }
 
-    private suspend fun jsEval(view: WebView, script: String): String = withContext(Dispatchers.Main) {
-        suspendCancellableCoroutine { cont ->
+    private suspend fun jsEval(view: WebView, script: String): String {
+        val deferred = CompletableDeferred<String>()
+        withContext(Dispatchers.Main) {
             view.evaluateJavascript(script, ValueCallback { raw ->
-                val s = when (raw) {
+                deferred.complete(when (raw) {
                     null, "null" -> ""
                     else -> raw.trim('"')
-                }
-                cont.resume(s)
+                })
             })
         }
+        return withTimeout(30_000) { deferred.await() }
     }
 }

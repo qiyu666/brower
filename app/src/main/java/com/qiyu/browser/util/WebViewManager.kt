@@ -96,23 +96,22 @@ class WebViewManager(
             }
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
-            setDownloadListener { url, _, contentDisposition, mimeType, suggested ->
-                val fileName = contentDisposition
-                    ?.let { cd ->
-                        val raw = when {
-                            cd.contains("filename*=") -> cd.substringAfter("filename*=")
-                            cd.contains("filename=") -> cd.substringAfter("filename=")
-                            else -> ""
-                        }
-                        raw.split(";").firstOrNull()
-                            ?.trim()
-                            ?.removeSurrounding("\"")
-                            ?.removePrefix("UTF-8''")
-                            ?.takeIf { it.isNotEmpty() && !it.contains(" ") }
+            setDownloadListener { downloadUrl, _, contentDisposition, mimeType, suggested ->
+                var resolvedName: String? = contentDisposition?.let { cd ->
+                    val raw = when {
+                        cd.contains("filename*=") -> cd.substringAfter("filename*=")
+                        cd.contains("filename=") -> cd.substringAfter("filename=")
+                        else -> ""
                     }
-                    ?: suggested
-                    ?: WebUtils.getFileNameFromUrl(url)
-                listener.onDownloadRequested(tabId, url, fileName, mimeType, suggested)
+                    raw.split(";").firstOrNull()
+                        ?.trim()
+                        ?.removeSurrounding("\"")
+                        ?.removePrefix("UTF-8''")
+                        ?.takeIf { name -> name.isNotEmpty() && !name.contains(" ") }
+                }
+                if (resolvedName == null) resolvedName = suggested
+                if (resolvedName == null) resolvedName = WebUtils.getFileNameFromUrl(downloadUrl)
+                listener.onDownloadRequested(tabId, downloadUrl, resolvedName, mimeType, suggested)
             }
             visibility = View.GONE
             loadUrl("about:blank")
