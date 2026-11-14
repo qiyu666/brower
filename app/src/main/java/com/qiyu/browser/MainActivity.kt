@@ -19,10 +19,12 @@ import android.app.DownloadManager
 import android.os.Environment
 import android.net.Uri
 import com.qiyu.browser.model.DownloadItem
+import com.qiyu.browser.model.DownloadStatus
 import com.qiyu.browser.navigation.BrowserNavHost
 import com.qiyu.browser.navigation.Destinations
 import com.qiyu.browser.service.DownloadService
 import com.qiyu.browser.ui.theme.NovaBrowserTheme
+import com.qiyu.browser.util.LocalDownload
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.util.WebViewListener
 import com.qiyu.browser.util.WebViewManager
@@ -89,16 +91,37 @@ class MainActivity : ComponentActivity() {
 
             override fun onNewPage(tabId: Int, url: String) {}
 
-            override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?) {
+            override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?, suggestedName: String?) {
                 val isIncognito = tabsVM.tabs.value.find { it.id == tabId }?.isIncognito ?: false
                 val referer = webManager.getWebView(tabId)?.url
+                val finalName = fileName ?: suggestedName ?: WebUtils.getFileNameFromUrl(url)
                 lifecycleScope.launch {
                     val app = application as NovaBrowserApp
-                    val finalName = fileName ?: WebUtils.getFileNameFromUrl(url)
-                    val id = app.downloadRepository.add(
-                        DownloadItem(url = url, fileName = finalName, mimeType = mimeType, isIncognito = isIncognito)
-                    )
-                    DownloadService.start(this@MainActivity, url, finalName, mimeType, id, referer)
+                    val row = DownloadItem(url = url, fileName = finalName, mimeType = mimeType, isIncognito = isIncognito)
+                    val id = app.downloadRepository.add(row)
+                    val item = row.copy(id = id)
+                    when {
+                        url.startsWith("blob:") -> {
+                            val wv = webManager.getWebView(tabId)
+                            if (wv != null) {
+                                LocalDownload.fromBlob(
+                                    this@MainActivity, wv, app.downloadRepository,
+                                    app.settingsRepository.config.value, item, url, finalName
+                                )
+                            } else {
+                                app.downloadRepository.update(item.copy(status = DownloadStatus.FAILED, errorMsg = "WebView unavailable"))
+                            }
+                        }
+                        url.startsWith("data:") ->
+                            LocalDownload.fromDataUri(
+                                this@MainActivity, app.downloadRepository,
+                                app.settingsRepository.config.value, item, url, finalName, mimeType
+                            )
+                        url.startsWith("http://") || url.startsWith("https://") ->
+                            DownloadService.start(this@MainActivity, url, finalName, mimeType, id, referer)
+                        else ->
+                            app.downloadRepository.update(item.copy(status = DownloadStatus.FAILED, errorMsg = "Unsupported URL: $url"))
+                    }
                 }
             }
         })

@@ -20,7 +20,7 @@ interface WebViewListener {
     fun onPageFinished(tabId: Int, title: String, url: String)
     fun onProgressChanged(tabId: Int, progress: Int)
     fun onNewPage(tabId: Int, url: String)
-    fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?)
+    fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?, suggestedName: String?)
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -96,17 +96,23 @@ class WebViewManager(
             }
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
-            setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+            setDownloadListener { url, _, contentDisposition, mimeType, suggested ->
                 val fileName = contentDisposition
-                    ?.substringAfter("filename=", "")
-                    ?.substringAfter("filename*=", "")
-                    ?.split(";")
-                    ?.firstOrNull()
-                    ?.trim()
-                    ?.removeSurrounding("\"")
-                    ?.takeIf { it.isNotEmpty() && !it.contains(" ") }
+                    ?.let { cd ->
+                        val raw = when {
+                            cd.contains("filename*=") -> cd.substringAfter("filename*=")
+                            cd.contains("filename=") -> cd.substringAfter("filename=")
+                            else -> ""
+                        }
+                        raw.split(";").firstOrNull()
+                            ?.trim()
+                            ?.removeSurrounding("\"")
+                            ?.removePrefix("UTF-8''")
+                            ?.takeIf { it.isNotEmpty() && !it.contains(" ") }
+                    }
+                    ?: suggested
                     ?: WebUtils.getFileNameFromUrl(url)
-                listener.onDownloadRequested(tabId, url, fileName, mimeType)
+                listener.onDownloadRequested(tabId, url, fileName, mimeType, suggested)
             }
             visibility = View.GONE
             loadUrl("about:blank")
