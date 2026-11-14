@@ -39,7 +39,7 @@ class WebViewManager(
          * 很多站点用临时锚点（点击后立即从 DOM 移除），下载时再查 DOM 已找不到，
          * 所以在点击瞬间（捕获阶段）就把名字记下来。
          */
-        private const val DOWNLOAD_NAME_HOOK_JS = """
+        private val DOWNLOAD_NAME_HOOK_JS = """
             (function(){
               if (window.__dlNamesInstalled) return;
               window.__dlNamesInstalled = true;
