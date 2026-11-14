@@ -145,7 +145,7 @@ object LocalDownload {
             } else {
                 Uri.decode(payload).toByteArray()
             }
-            val name = fileName?.takeIf { it.isNotBlank() } ?: defaultName(mime)
+            val name = fileName?.takeIf { it.isNotBlank() && it != "download" } ?: defaultName(mime)
             val target = openTarget(context, config, name, mime)
             target.second.use { it.write(bytes) }
             repo.update(base.copy(

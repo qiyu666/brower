@@ -91,10 +91,10 @@ class MainActivity : ComponentActivity() {
 
             override fun onNewPage(tabId: Int, url: String) {}
 
-            override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?, suggestedName: String?) {
+            override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?) {
                 val isIncognito = tabsVM.tabs.value.find { it.id == tabId }?.isIncognito ?: false
                 val referer = webManager.getWebView(tabId)?.url
-                val finalName = fileName ?: suggestedName ?: WebUtils.getFileNameFromUrl(url)
+                val finalName = fileName ?: if (url.startsWith("blob:") || url.startsWith("data:")) "download" else WebUtils.getFileNameFromUrl(url)
                 lifecycleScope.launch {
                     val app = application as NovaBrowserApp
                     val row = DownloadItem(url = url, fileName = finalName, mimeType = mimeType, isIncognito = isIncognito)

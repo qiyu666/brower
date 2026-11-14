@@ -20,7 +20,7 @@ interface WebViewListener {
     fun onPageFinished(tabId: Int, title: String, url: String)
     fun onProgressChanged(tabId: Int, progress: Int)
     fun onNewPage(tabId: Int, url: String)
-    fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?, suggestedName: String?)
+    fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?)
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -96,8 +96,8 @@ class WebViewManager(
             }
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
-            setDownloadListener { downloadUrl, _, contentDisposition, mimeType, suggested ->
-                var resolvedName: String? = contentDisposition?.let { cd ->
+            setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+                val cdName = contentDisposition?.let { cd ->
                     val raw = when {
                         cd.contains("filename*=") -> cd.substringAfter("filename*=")
                         cd.contains("filename=") -> cd.substringAfter("filename=")
@@ -109,9 +109,12 @@ class WebViewManager(
                         ?.removePrefix("UTF-8''")
                         ?.takeIf { name -> name.isNotEmpty() && !name.contains(" ") }
                 }
-                if (resolvedName == null) resolvedName = suggested
-                if (resolvedName == null) resolvedName = WebUtils.getFileNameFromUrl(downloadUrl)
-                listener.onDownloadRequested(tabId, downloadUrl, resolvedName, mimeType, suggested)
+                val fileName = when {
+                    cdName != null -> cdName
+                    url.startsWith("blob:") || url.startsWith("data:") -> null
+                    else -> WebUtils.getFileNameFromUrl(url)
+                }
+                listener.onDownloadRequested(tabId, url, fileName, mimeType)
             }
             visibility = View.GONE
             loadUrl("about:blank")
