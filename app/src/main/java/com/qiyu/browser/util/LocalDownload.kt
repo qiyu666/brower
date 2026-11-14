@@ -91,6 +91,7 @@ object LocalDownload {
             val target = openTarget(context, config, saveName, mime)
             var off = 0L
             var lastUpdate = 0L
+            if (total > 0) LocalNotification.postProgress(context, base.id, saveName, 0, total)
             target.second.use { os ->
                 while (off < total) {
                     val len = min(CHUNK, (total - off).toInt())
@@ -108,6 +109,7 @@ object LocalDownload {
                             mimeType = mime,
                             status = DownloadStatus.IN_PROGRESS
                         ))
+                        if (total > 0) LocalNotification.postProgress(context, base.id, saveName, off, total)
                     }
                 }
             }
@@ -125,9 +127,25 @@ object LocalDownload {
                 downloadedSize = total,
                 status = DownloadStatus.COMPLETED
             ))
+            LocalNotification.postCompleted(context, base.id, saveName)
+            toastCompleted(context, saveName)
         } catch (e: Exception) {
             android.util.Log.e("QiyuDownload", "blob download failed: $url", e)
             repo.update(base.copy(status = DownloadStatus.FAILED, errorMsg = e.message ?: e.javaClass.simpleName))
+            LocalNotification.cancel(context, base.id)
+            toastFailed(context, e)
+        }
+    }
+
+    private fun toastCompleted(context: Context, fileName: String) {
+        withContext(Dispatchers.Main) {
+            android.widget.Toast.makeText(context, "下载完成：$fileName", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun toastFailed(context: Context, e: Exception) {
+        withContext(Dispatchers.Main) {
+            android.widget.Toast.makeText(context, "下载失败：${e.message ?: e.javaClass.simpleName}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -178,9 +196,12 @@ object LocalDownload {
                 downloadedSize = bytes.size.toLong(),
                 status = DownloadStatus.COMPLETED
             ))
+            LocalNotification.postCompleted(context, base.id, name)
+            toastCompleted(context, name)
         } catch (e: Exception) {
             android.util.Log.e("QiyuDownload", "data URI download failed: $url", e)
             repo.update(base.copy(status = DownloadStatus.FAILED, errorMsg = e.message ?: e.javaClass.simpleName))
+            toastFailed(context, e)
         }
     }
 

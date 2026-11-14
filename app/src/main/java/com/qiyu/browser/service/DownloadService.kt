@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.qiyu.browser.MainActivity
 import com.qiyu.browser.NovaBrowserApp
+import com.qiyu.browser.R
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
 import com.qiyu.browser.util.WebUtils
@@ -99,7 +100,7 @@ class DownloadService : Service() {
 
     private fun buildNotification(title: String, progress: Int?, finished: Boolean): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ic_noti_download)
             .setContentTitle(title)
             .setOngoing(!finished)
             .setShowWhen(false)
@@ -282,13 +283,14 @@ class DownloadService : Service() {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
                 val doneNotification = NotificationCompat.Builder(svc, CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setSmallIcon(R.drawable.ic_noti_download)
                     .setContentTitle("\u4e0b\u8f7d\u5b8c\u6210")
                     .setContentText(effectiveName)
                     .setContentIntent(pending)
                     .setOngoing(false)
                     .build()
                 svc.notificationManager.notify(downloadId.toInt(), doneNotification)
+                android.widget.Toast.makeText(svc, "下载完成：$effectiveName", android.widget.Toast.LENGTH_SHORT).show()
 
                 activeDownloads--
                 if (activeDownloads <= 0) {
