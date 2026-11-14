@@ -134,7 +134,7 @@ private fun DownloadItemRow(
             if (item.fileSize > 0) "${item.downloadedSize * 100 / item.fileSize}%"
             else WebUtils.formatFileSize(item.downloadedSize)
         DownloadStatus.COMPLETED -> "Completed"
-        DownloadStatus.FAILED -> "Failed"
+        DownloadStatus.FAILED -> item.errorMsg?.let { "Failed · $it" } ?: "Failed"
         DownloadStatus.CANCELLED -> "Cancelled"
     }
 
@@ -169,7 +169,9 @@ private fun DownloadItemRow(
             Text(
                 "${WebUtils.formatFileSize(item.fileSize)}  ·  $statusText",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {

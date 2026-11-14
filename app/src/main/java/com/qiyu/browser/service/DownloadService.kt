@@ -31,13 +31,15 @@ class DownloadService : Service() {
         const val EXTRA_FILE_NAME = "file_name"
         const val EXTRA_MIME_TYPE = "mime_type"
         const val EXTRA_DOWNLOAD_ID = "download_id"
+        const val EXTRA_REFERER = "referer"
 
-        fun start(context: Context, url: String, fileName: String?, mimeType: String?, downloadId: Long) {
+        fun start(context: Context, url: String, fileName: String?, mimeType: String?, downloadId: Long, referer: String? = null) {
             val intent = Intent(context, DownloadService::class.java).apply {
                 putExtra(EXTRA_URL, url)
                 putExtra(EXTRA_FILE_NAME, fileName)
                 putExtra(EXTRA_MIME_TYPE, mimeType)
                 putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+                putExtra(EXTRA_REFERER, referer)
             }
             ContextCompat.startForegroundService(context, intent)
         }
@@ -61,12 +63,13 @@ class DownloadService : Service() {
                 ?: WebUtils.getFileNameFromUrl(url)
             val mimeType = intent.getStringExtra(EXTRA_MIME_TYPE)
             val downloadId = intent.getLongExtra(EXTRA_DOWNLOAD_ID, -1L)
+            val referer = intent.getStringExtra(EXTRA_REFERER)
 
             activeDownloads++
             startForegroundAsDataSync()
 
             serviceScope.launch {
-                downloadFile(url, fileName, mimeType, downloadId)
+                downloadFile(url, fileName, mimeType, downloadId, referer)
             }
         }
         return START_NOT_STICKY
@@ -113,7 +116,8 @@ class DownloadService : Service() {
         url: String,
         fileName: String,
         mimeType: String?,
-        downloadId: Long
+        downloadId: Long,
+        referer: String?
     ) {
         val app = application as NovaBrowserApp
         val repo = app.downloadRepository
@@ -122,22 +126,63 @@ class DownloadService : Service() {
 
         try {
             android.util.Log.d("QiyuDownload", "url=$url fileName=$fileName mimeType=$mimeType")
-            val connection = URL(url).openConnection() as HttpURLConnection
-            connection.connectTimeout = 30_000
-            connection.readTimeout = 60_000
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
-            connection.setRequestProperty("Accept", "*/*")
-            connection.connect()
 
-            val code = connection.responseCode
-            android.util.Log.d("QiyuDownload", "responseCode=$code")
-            if (code != 200) {
-                throw Exception("HTTP $code: ${connection.responseMessage}")
+            // 手动跟随跳转（JVM 不自动跟随 http<->https 跨协议跳转）
+            var currentUrl = url
+            var redirects = 0
+            var connection: HttpURLConnection? = null
+            while (true) {
+                val c = URL(currentUrl).openConnection() as HttpURLConnection
+                c.connectTimeout = 30_000
+                c.readTimeout = 60_000
+                c.instanceFollowRedirects = false
+                c.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                c.setRequestProperty("Accept", "*/*")
+                if (!referer.isNullOrEmpty()) c.setRequestProperty("Referer", referer)
+                c.connect()
+                val code = c.responseCode
+                android.util.Log.d("QiyuDownload", "url=$currentUrl responseCode=$code")
+                when {
+                    code in 300..399 -> {
+                        val location = c.getHeaderField("Location")
+                        c.disconnect()
+                        if (location == null) throw Exception("HTTP $code without Location")
+                        if (++redirects > 5) throw Exception("Too many redirects")
+                        currentUrl = resolveLocation(currentUrl, location)
+                        continue
+                    }
+                    code in 200..299 -> {
+                        connection = c
+                        break
+                    }
+                    else -> {
+                        c.disconnect()
+                        throw Exception("HTTP $code: ${c.responseMessage}")
+                    }
+                }
+            }
+            val conn = connection!!
+
+            // 优先使用服务器响应头提供的文件名
+            var effectiveName = fileName
+            conn.getHeaderField("Content-Disposition")?.let { cd ->
+                val raw = when {
+                    cd.contains("filename*=") -> cd.substringAfter("filename*=")
+                    cd.contains("filename=") -> cd.substringAfter("filename=")
+                    else -> ""
+                }
+                val serverName = raw.split(";")
+                    .firstOrNull()
+                    ?.trim()
+                    ?.removeSurrounding("\"")
+                    ?.removePrefix("UTF-8''")
+                if (!serverName.isNullOrEmpty() && !serverName.contains(" ")) {
+                    effectiveName = serverName
+                }
             }
 
-            var totalSize = connection.contentLength.toLong()
+            var totalSize = conn.contentLength.toLong()
             var downloaded = 0L
             val filePath: String
 
@@ -146,11 +191,11 @@ class DownloadService : Service() {
                 val dirUri = Uri.parse(config.downloadDir)
                 val mimeForDoc = mimeType ?: "application/octet-stream"
                 val docUri = DocumentsContract.createDocument(
-                    contentResolver, dirUri, mimeForDoc, fileName
+                    contentResolver, dirUri, mimeForDoc, effectiveName
                 ) ?: throw Exception("Cannot create file in custom directory")
                 filePath = docUri.toString()
 
-                connection.inputStream.use { input ->
+                conn.inputStream.use { input ->
                     contentResolver.openOutputStream(docUri)?.use { output ->
                         val buffer = ByteArray(8192)
                         var lastUpdate = 0L
@@ -184,10 +229,10 @@ class DownloadService : Service() {
                 } ?: throw Exception("External storage not available")
                 val downloadDir = File(baseDir, "downloads")
                 if (!downloadDir.exists()) downloadDir.mkdirs()
-                val file = File(downloadDir, fileName)
+                val file = File(downloadDir, effectiveName)
                 filePath = file.absolutePath
 
-                connection.inputStream.use { input ->
+                conn.inputStream.use { input ->
                     file.outputStream().use { output ->
                         val buffer = ByteArray(8192)
                         var lastUpdate = 0L
@@ -213,13 +258,14 @@ class DownloadService : Service() {
                 }
             }
 
-            connection.disconnect()
+            conn.disconnect()
             if (totalSize < 0) totalSize = downloaded
 
             // Mark as completed
             val svc = this
             withContext(Dispatchers.Main) {
                 repo.update(base.copy(
+                    fileName = effectiveName,
                     filePath = filePath,
                     fileSize = totalSize,
                     downloadedSize = totalSize,
@@ -238,7 +284,7 @@ class DownloadService : Service() {
                 val doneNotification = NotificationCompat.Builder(svc, CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("\u4e0b\u8f7d\u5b8c\u6210")
-                    .setContentText(fileName)
+                    .setContentText(effectiveName)
                     .setContentIntent(pending)
                     .setOngoing(false)
                     .build()
@@ -253,7 +299,10 @@ class DownloadService : Service() {
         } catch (e: Exception) {
             android.util.Log.e("QiyuDownload", "download failed: url=$url", e)
             withContext(Dispatchers.Main) {
-                repo.update(base.copy(status = DownloadStatus.FAILED))
+                repo.update(base.copy(
+                    status = DownloadStatus.FAILED,
+                    errorMsg = e.message ?: e.javaClass.simpleName
+                ))
                 activeDownloads--
                 if (activeDownloads <= 0) {
                     stopSelf()
@@ -266,5 +315,17 @@ class DownloadService : Service() {
     override fun onDestroy() {
         serviceScope.cancel()
         super.onDestroy()
+    }
+
+    private fun resolveLocation(current: String, location: String): String {
+        if (location.startsWith("http://") || location.startsWith("https://")) return location
+        val u = URL(current)
+        val host = u.host + if (u.port != -1) ":${u.port}" else ""
+        return if (location.startsWith("/")) {
+            "${u.protocol}://$host$location"
+        } else {
+            val dir = u.path.removeSuffix(u.path.substringAfterLast('/'))
+            "${u.protocol}://$host$dir$location"
+        }
     }
 }

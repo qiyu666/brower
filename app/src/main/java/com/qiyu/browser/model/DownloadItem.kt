@@ -21,5 +21,6 @@ data class DownloadItem(
     val downloadedSize: Long = 0,
     val status: DownloadStatus = DownloadStatus.IN_PROGRESS,
     val createdAt: Long = System.currentTimeMillis(),
-    val isIncognito: Boolean = false
+    val isIncognito: Boolean = false,
+    val errorMsg: String? = null
 )

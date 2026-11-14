@@ -91,13 +91,14 @@ class MainActivity : ComponentActivity() {
 
             override fun onDownloadRequested(tabId: Int, url: String, fileName: String?, mimeType: String?) {
                 val isIncognito = tabsVM.tabs.value.find { it.id == tabId }?.isIncognito ?: false
+                val referer = webManager.getWebView(tabId)?.url
                 lifecycleScope.launch {
                     val app = application as NovaBrowserApp
                     val finalName = fileName ?: WebUtils.getFileNameFromUrl(url)
                     val id = app.downloadRepository.add(
                         DownloadItem(url = url, fileName = finalName, mimeType = mimeType, isIncognito = isIncognito)
                     )
-                    DownloadService.start(this@MainActivity, url, finalName, mimeType, id)
+                    DownloadService.start(this@MainActivity, url, finalName, mimeType, id, referer)
                 }
             }
         })
