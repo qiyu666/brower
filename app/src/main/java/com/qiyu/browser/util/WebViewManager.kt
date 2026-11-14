@@ -35,30 +35,42 @@ class WebViewManager(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
         /**
-         * 页面点击时记录「blob URL → 锚点 download 属性名」快照。
-         * 很多站点用临时锚点（点击后立即从 DOM 移除），下载时再查 DOM 已找不到，
-         * 所以在点击瞬间（捕获阶段）就把名字记下来。
+         * 页面下载触发时记录「blob/data URL → 锚点 download 属性名」快照。
+         * 三层捕获：
+         * 1) document 捕获阶段点击（真人点 <a download>）；
+         * 2) 重写 HTMLAnchorElement.prototype.click（程序化 a.click()，含未挂 DOM 的临时锚点，
+         *    这种点击 document 监听器在部分时序下收不到，原型重写最可靠）；
+         * 这样下载触发后查 DOM 已找不到锚点也能拿到真名。
          */
         private val DOWNLOAD_NAME_HOOK_JS = """
             (function(){
               if (window.__dlNamesInstalled) return;
               window.__dlNamesInstalled = true;
               window.__dlNames = window.__dlNames || {};
+              function record(a){
+                try {
+                  if (!a) return;
+                  var href = a.href || a.getAttribute('href') || '';
+                  var name = a.download || a.getAttribute('download') || '';
+                  if (href && name) window.__dlNames[href] = name;
+                } catch(e){}
+              }
               document.addEventListener('click', function(ev){
                 try {
-                  var el = ev.target;
-                  while (el && el.nodeType !== 1) el = el.parentNode;
-                  if (!el) return;
-                  var a = null;
-                  if (el.tagName === 'A' && el.hasAttribute('download')) a = el;
-                  else if (el.querySelector) a = el.querySelector('a[download]');
-                  if (!a && el.closest) a = el.closest('a[download]');
-                  if (a) {
-                    var href = a.getAttribute('href') || '';
-                    if (href) window.__dlNames[href] = a.getAttribute('download') || '';
-                  }
-                } catch (e) {}
+                  var t = ev.target;
+                  while (t && t.nodeType !== 1) t = t.parentNode;
+                  if (!t) return;
+                  if (t.closest) record(t.closest('a[download]'));
+                  else if (t.tagName === 'A' && t.hasAttribute('download')) record(t);
+                } catch(e){}
               }, true);
+              try {
+                var origClick = HTMLAnchorElement.prototype.click;
+                HTMLAnchorElement.prototype.click = function(){
+                  record(this);
+                  return origClick.apply(this, arguments);
+                };
+              } catch(e){}
             })();
             """.trimIndent()
     }
