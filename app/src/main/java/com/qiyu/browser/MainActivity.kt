@@ -5,12 +5,30 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -170,24 +188,52 @@ class MainActivity : ComponentActivity() {
                         LaunchedEffect(Unit) { nav.navigate(Destinations.DOWNLOADS) }
                     }
 
-                    BrowserNavHost(
-                        navController = nav,
-                        tabsVM = tabsVM,
-                        bookmarksVM = bookmarksVM,
-                        historyVM = historyVM,
-                        downloadsVM = downloadsVM,
-                        settingsVM = settingsVM,
-                        webManager = webManager,
-                        onShare = { url, title -> shareUrl(url, title) },
-                        onOpenFile = { path -> openFile(path) },
-                        onOpenUrlInCurrentTab = { url ->
-                            val activeTab = tabsVM.activeTab.value
-                            if (activeTab != null) {
-                                webManager.loadUrl(activeTab.id, url)
-                                tabsVM.updateTabState(activeTab.id, url = url, isLoading = true)
+                    // 应用内下载提醒：终态事件横幅（NavHost 上方，所有页面可见）
+                    val lastEvent by downloadsVM.lastEvent.collectAsStateWithLifecycle()
+                    var consumedToken by remember { mutableLongOf(0L) }
+                    val activeEvent = lastEvent?.takeIf { it.token > consumedToken }
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (activeEvent != null) {
+                            val ev = activeEvent
+                            DownloadEventBanner(
+                                event = ev,
+                                onView = {
+                                    consumedToken = ev.token
+                                    if (nav.currentDestination?.id != nav.graph.findNode(Destinations.DOWNLOADS)?.id) {
+                                        nav.navigate(Destinations.DOWNLOADS)
+                                    }
+                                },
+                                onDismiss = { consumedToken = ev.token }
+                            )
+                            LaunchedEffect(ev.token) {
+                                kotlinx.coroutines.delay(6000)
+                                consumedToken = ev.token
                             }
                         }
-                    )
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier.weight(1f).fillMaxWidth()
+                        ) {
+                            BrowserNavHost(
+                                navController = nav,
+                                tabsVM = tabsVM,
+                                bookmarksVM = bookmarksVM,
+                                historyVM = historyVM,
+                                downloadsVM = downloadsVM,
+                                settingsVM = settingsVM,
+                                webManager = webManager,
+                                onShare = { url, title -> shareUrl(url, title) },
+                                onOpenFile = { path -> openFile(path) },
+                                onOpenUrlInCurrentTab = { url ->
+                                    val activeTab = tabsVM.activeTab.value
+                                    if (activeTab != null) {
+                                        webManager.loadUrl(activeTab.id, url)
+                                        tabsVM.updateTabState(activeTab.id, url = url, isLoading = true)
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -265,5 +311,42 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         webManager.destroyAll()
         super.onDestroy()
+    }
+}
+
+/** 应用内下载完成/失败横幅：点「查看」跳下载列表，点关闭或 6 秒后自动消失 */
+@Composable
+private fun DownloadEventBanner(
+    event: com.qiyu.browser.viewmodel.DownloadEvent,
+    onView: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (event.success) Icons.Filled.Download else Icons.Filled.Error,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = if (event.success) "下载完成：${event.fileName}" else "下载失败：${event.fileName} ${event.detail}".trim(),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onView) {
+            Text("查看")
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Filled.Close, contentDescription = "关闭")
+        }
     }
 }
