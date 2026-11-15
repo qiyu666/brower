@@ -30,6 +30,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
 import com.qiyu.browser.ui.component.AddressBar
@@ -314,17 +320,17 @@ fun BrowserScreen(
             onDismissRequest = { showMenu = false },
             text = {
                 Column {
-                    MenuRow("\u4e66\u7b7e") { onNavigateToBookmarks(); showMenu = false }
-                    MenuRow("\u5386\u53f2\u8bb0\u5f55") { onNavigateToHistory(); showMenu = false }
-                    MenuRow("\u4e0b\u8f7d") { onNavigateToDownloads(); showMenu = false }
-                    MenuRow("\u79c1\u5bc6\u6a21\u5f0f") {
+                    MenuRow("\u4e66\u7b7e", Icons.Filled.Star) { onNavigateToBookmarks(); showMenu = false }
+                    MenuRow("\u5386\u53f2\u8bb0\u5f55", Icons.Filled.History) { onNavigateToHistory(); showMenu = false }
+                    MenuRow("\u4e0b\u8f7d", Icons.Filled.Download) { onNavigateToDownloads(); showMenu = false }
+                    MenuRow("\u79c1\u5bc6\u6a21\u5f0f", Icons.Filled.Face) {
                         val tabId = tabsVM.addTab("", incognito = true)
                         webManager.createWebView(tabId, incognito = true)
                         webManager.showTab(tabId)
                         showMenu = false
                     }
-                    MenuRow("\u8bbe\u7f6e") { onNavigateToSettings(); showMenu = false }
-                    MenuRow("\u5206\u4eab") {
+                    MenuRow("\u8bbe\u7f6e", Icons.Filled.Settings) { onNavigateToSettings(); showMenu = false }
+                    MenuRow("\u5206\u4eab", Icons.Filled.Share) {
                         activeTab?.let { onShare(it.url, it.title) }
                         showMenu = false
                     }
@@ -433,15 +439,27 @@ fun TabSwitcherOverlay(
 }
 
 @Composable
-fun MenuRow(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.bodyLarge,
+fun MenuRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp)
-    )
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
+    }
 }
 
 @Composable
