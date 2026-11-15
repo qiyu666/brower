@@ -209,7 +209,7 @@ fun SettingsScreen(
             // About
             Spacer(modifier = Modifier.height(16.dp))
             SectionTitle(AppStrings.t("about"))
-            SettingRow(icon = {}, title = AppStrings.t("version"), value = "1.0.0") {}
+            SettingRow(icon = {}, title = AppStrings.t("version"), value = viewModel.versionName) {}
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

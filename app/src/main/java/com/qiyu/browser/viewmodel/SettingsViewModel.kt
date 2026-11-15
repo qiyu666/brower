@@ -13,6 +13,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val config: StateFlow<BrowserConfig> = repo.config
 
+    /** 真实版本号（跟 build.gradle 的 versionName 同步，避免写死） */
+    val versionName: String = try {
+        application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: ""
+    } catch (e: Exception) {
+        ""
+    }
+
     init {
         AppStrings.setLanguage(config.value.language)
     }
