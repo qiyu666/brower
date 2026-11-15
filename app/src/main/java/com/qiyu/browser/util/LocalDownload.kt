@@ -94,6 +94,7 @@ object LocalDownload {
             var off = 0L
             var lastUpdate = 0L
             if (total > 0) LocalNotification.postProgress(context, base.id, saveName, 0, total)
+            toastStarted(context, saveName)
             target.second.use { os ->
                 while (off < total) {
                     val len = min(CHUNK, (total - off).toInt())
@@ -137,6 +138,12 @@ object LocalDownload {
             repo.update(base.copy(status = DownloadStatus.FAILED, errorMsg = e.message ?: e.javaClass.simpleName))
             LocalNotification.cancel(context, base.id)
             toastFailed(context, e)
+        }
+    }
+
+    private suspend fun toastStarted(context: Context, fileName: String) {
+        withContext(Dispatchers.Main) {
+            android.widget.Toast.makeText(context, "正在下载：$fileName", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -190,6 +197,7 @@ object LocalDownload {
                 Uri.decode(payload).toByteArray()
             }
             val name = fileName?.takeIf { it.isNotBlank() && it != "download" } ?: defaultName(mime)
+            toastStarted(context, name)
             val target = openTarget(context, config, name, mime)
             target.second.use { it.write(bytes) }
             repo.update(base.copy(

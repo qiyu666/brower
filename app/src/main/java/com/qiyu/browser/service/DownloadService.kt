@@ -69,6 +69,7 @@ class DownloadService : Service() {
 
             activeDownloads++
             startForegroundAsDataSync()
+            android.widget.Toast.makeText(this, "正在下载：$fileName", android.widget.Toast.LENGTH_SHORT).show()
 
             serviceScope.launch {
                 downloadFile(url, fileName, mimeType, downloadId, referer)
