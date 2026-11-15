@@ -346,7 +346,7 @@ fun BrowserScreen(
             Box(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .matchParentWidth()
+                    .fillMaxWidth()
                     .offset(y = sheetOffset)
             ) {
                 OverflowMenuSheet(
@@ -502,9 +502,9 @@ private fun OverflowMenuSheet(
         )
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Star, "书签", accent = true, onClick = onBookmarks)
-            GridMenuItem(Icons.Filled.History, "历史记录", accent = true, onClick = onHistory)
-            GridMenuItem(Icons.Filled.Download, "下载", accent = true, onClick = onDownloads)
+            GridMenuItem(Icons.Filled.Star, "书签", accent = true, modifier = Modifier.weight(1f), onClick = onBookmarks)
+            GridMenuItem(Icons.Filled.History, "历史记录", accent = true, modifier = Modifier.weight(1f), onClick = onHistory)
+            GridMenuItem(Icons.Filled.Download, "下载", accent = true, modifier = Modifier.weight(1f), onClick = onDownloads)
         }
         Spacer(Modifier.height(12.dp))
         // 分隔线
@@ -517,9 +517,9 @@ private fun OverflowMenuSheet(
         )
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Face, "私密模式", onClick = onIncognito)
-            GridMenuItem(Icons.Filled.Settings, "设置", onClick = onSettings)
-            GridMenuItem(Icons.Filled.Share, "分享", onClick = onShare)
+            GridMenuItem(Icons.Filled.Face, "私密模式", modifier = Modifier.weight(1f), onClick = onIncognito)
+            GridMenuItem(Icons.Filled.Settings, "设置", modifier = Modifier.weight(1f), onClick = onSettings)
+            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
         }
     }
 }
@@ -530,11 +530,11 @@ private fun GridMenuItem(
     icon: ImageVector,
     label: String,
     accent: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
