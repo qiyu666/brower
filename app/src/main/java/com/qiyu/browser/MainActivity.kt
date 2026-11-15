@@ -329,7 +329,7 @@ class MainActivity : ComponentActivity() {
                 updateApkFile = target
                 updateInstallReady = true
             } else {
-                Toast.makeText(this, "下载失败：直连与 gh-proxy 代理均不可用，请稍后重试", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "下载失败：直连与 gh-proxy 代理均不可用，请稍后重试", Toast.LENGTH_LONG).show()
             }
         }
     }

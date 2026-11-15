@@ -29,7 +29,7 @@ object UpdateChecker {
             val conn = URL(API_LATEST).openConnection() as HttpURLConnection
             conn.connectTimeout = 15_000
             conn.readTimeout = 15_000
-            conn.requestProperty("Accept", "application/vnd.github+json")
+            conn.setRequestProperty("Accept", "application/vnd.github+json")
             if (conn.responseCode != 200) return null
             val json = JSONObject(conn.inputStream.bufferedReader().readText())
             val tag = json.optString("tag_name", "").removePrefix("v")
