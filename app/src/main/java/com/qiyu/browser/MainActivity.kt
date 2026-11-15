@@ -2,26 +2,15 @@ package com.qiyu.browser
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,15 +26,11 @@ import com.qiyu.browser.navigation.Destinations
 import com.qiyu.browser.service.DownloadService
 import com.qiyu.browser.ui.theme.NovaBrowserTheme
 import com.qiyu.browser.util.LocalDownload
-import com.qiyu.browser.util.UpdateChecker
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.util.WebViewListener
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.viewmodel.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -63,14 +48,6 @@ class MainActivity : ComponentActivity() {
     private var navController: androidx.navigation.NavHostController? = null
     private var backCallback: OnBackPressedCallback? = null
     private var pendingOpenDownloads = false
-
-    // 更新检查/下载状态（setContent 里读，需可组合）
-    private var updateInfo: UpdateChecker.UpdateInfo? = null
-    private var updateDialogVisible by mutableStateOf(false)
-    private var updateDownloading by mutableStateOf(false)
-    private var updateProgress by mutableStateOf(0)
-    private var updateInstallReady by mutableStateOf(false)
-    private var updateApkFile: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -212,50 +189,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-
-                    // 发现新版本
-                    if (updateDialogVisible && updateInfo != null) {
-                        val info = updateInfo!!
-                        AlertDialog(
-                            onDismissRequest = { updateDialogVisible = false },
-                            title = { Text("发现新版本 v${info.version}") },
-                            text = { Text(if (info.notes.isNotEmpty()) info.notes else "点击“更新”下载并安装最新版本") },
-                            confirmButton = {
-                                TextButton(onClick = { downloadUpdate() }) { Text("更新") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { updateDialogVisible = false }) { Text("稍后") }
-                            }
-                        )
-                    }
-                    // 下载中（直连失败自动切 gh-proxy 代理）
-                    if (updateDownloading) {
-                        AlertDialog(
-                            onDismissRequest = { },
-                            text = {
-                                Column(Modifier.fillMaxWidth()) {
-                                    Text("正在下载 v${updateInfo?.version ?: ""}… ${updateProgress}%")
-                                    Spacer(Modifier.height(12.dp))
-                                    UpdateProgressBar(updateProgress / 100f)
-                                }
-                            },
-                            confirmButton = {}
-                        )
-                    }
-                    // 下载完成，确认安装
-                    if (updateInstallReady) {
-                        AlertDialog(
-                            onDismissRequest = { updateInstallReady = false },
-                            title = { Text("下载完成") },
-                            text = { Text("现在安装新版本？") },
-                            confirmButton = {
-                                TextButton(onClick = { installUpdate() }) { Text("安装") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { updateInstallReady = false }) { Text("取消") }
-                            }
-                        )
-                    }
                 }
             }
         }
@@ -292,60 +225,6 @@ class MainActivity : ComponentActivity() {
             }
         }
         onBackPressedDispatcher.addCallback(this, backCallback!!)
-
-        // 启动后自动检查 GitHub Releases 是否有新版本
-        lifecycleScope.launch {
-            delay(3000)
-            checkForUpdate()
-        }
-    }
-
-    private fun checkForUpdate() {
-        val current = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
-        } catch (e: Exception) {
-            ""
-        }
-        lifecycleScope.launch {
-            val info = withContext(Dispatchers.IO) { UpdateChecker.fetchLatest() }
-            if (info != null && UpdateChecker.isNewer(info.version, current)) {
-                updateInfo = info
-                updateDialogVisible = true
-            }
-        }
-    }
-
-    private fun downloadUpdate() {
-        val info = updateInfo ?: return
-        if (updateDownloading) return
-        updateDialogVisible = false
-        updateDownloading = true
-        updateProgress = 0
-        lifecycleScope.launch {
-            val target = File(getExternalFilesDir(null), "updates/qiyu-browser-${info.version}.apk")
-            val ok = UpdateChecker.download(info.directUrl, target) { pct -> updateProgress = pct }
-            updateDownloading = false
-            if (ok) {
-                updateApkFile = target
-                updateInstallReady = true
-            } else {
-                Toast.makeText(this@MainActivity, "下载失败：直连与 gh-proxy 代理均不可用，请稍后重试", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun installUpdate() {
-        val file = updateApkFile ?: return
-        updateInstallReady = false
-        try {
-            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-            startActivity(Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
-        } catch (e: Exception) {
-            Toast.makeText(this, "无法打开安装器：${file.absolutePath}", Toast.LENGTH_LONG).show()
-        }
     }
 
     private fun shareUrl(url: String, title: String) {
@@ -388,13 +267,4 @@ class MainActivity : ComponentActivity() {
         webManager.destroyAll()
         super.onDestroy()
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun UpdateProgressBar(fraction: Float) {
-    LinearProgressIndicator(
-        progress = { fraction },
-        modifier = Modifier.fillMaxWidth()
-    )
 }

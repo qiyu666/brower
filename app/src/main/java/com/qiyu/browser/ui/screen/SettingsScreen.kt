@@ -17,10 +17,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.core.content.FileProvider
 import com.qiyu.browser.util.AppStrings
+import com.qiyu.browser.util.UpdateChecker
 import com.qiyu.browser.viewmodel.SettingsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +42,8 @@ fun SettingsScreen(
     var engineDialog by remember { mutableStateOf(false) }
     var langDialog by remember { mutableStateOf(false) }
     var downloadDirDialog by remember { mutableStateOf(false) }
+    var updateState by remember { mutableStateOf<UpdateCheckState>(UpdateCheckState.Idle) }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val dirPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -48,6 +58,134 @@ fun SettingsScreen(
             viewModel.setDownloadDir(it.toString())
         }
         downloadDirDialog = false
+    }
+
+    // 点击“版本”行：查 GitHub Releases Latest，结果弹框
+    fun startCheck() {
+        if (updateState is UpdateCheckState.Checking || updateState is UpdateCheckState.Downloading) return
+        updateState = UpdateCheckState.Checking
+        scope.launch {
+            val current = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+            } catch (e: Exception) { "" }
+            val info = withContext(Dispatchers.IO) { UpdateChecker.fetchLatest() }
+            updateState = when {
+                info == null -> UpdateCheckState.Failed("检查失败：无法连接 GitHub，请稍后重试")
+                !UpdateChecker.isNewer(info.version, current) -> UpdateCheckState.UpToDate(info.version)
+                else -> UpdateCheckState.NewVersion(info)
+            }
+        }
+    }
+
+    fun startDownload(info: UpdateChecker.UpdateInfo) {
+        updateState = UpdateCheckState.Downloading(info, 0)
+        scope.launch {
+            val target = File(context.getExternalFilesDir(null), "updates/qiyu-browser-${info.version}.apk")
+            val ok = UpdateChecker.download(info.directUrl, target) { pct ->
+                updateState = UpdateCheckState.Downloading(info, pct)
+            }
+            updateState = if (ok) {
+                UpdateCheckState.ReadyToInstall(target, info.version)
+            } else {
+                UpdateCheckState.Failed("下载失败：直连与 gh-proxy 代理均不可用，请稍后重试")
+            }
+        }
+    }
+
+    fun installUpdate(file: File, version: String) {
+        updateState = UpdateCheckState.Idle
+        try {
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (e: Exception) {
+            Toast.makeText(context, "无法打开安装器：${file.absolutePath}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // 更新检查弹窗
+    when (val st = updateState) {
+        is UpdateCheckState.Checking -> AlertDialog(
+            onDismissRequest = { },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(16.dp))
+                    Text("正在检查更新…")
+                }
+            },
+            confirmButton = {}
+        )
+        is UpdateCheckState.UpToDate -> AlertDialog(
+            onDismissRequest = { updateState = UpdateCheckState.Idle },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        null,
+                        modifier = Modifier.size(72.dp),
+                        tint = Color(0xFF4CAF50)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "已是最新版本 v${st.latestVersion}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("好的") }
+            }
+        )
+        is UpdateCheckState.NewVersion -> AlertDialog(
+            onDismissRequest = { updateState = UpdateCheckState.Idle },
+            title = { Text("发现新版本 v${st.info.version}") },
+            text = { Text(if (st.info.notes.isNotEmpty()) st.info.notes else "点击“更新”下载最新版本") },
+            confirmButton = {
+                TextButton(onClick = { startDownload(st.info) }) { Text("更新") }
+            },
+            dismissButton = {
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("稍后") }
+            }
+        )
+        is UpdateCheckState.Downloading -> AlertDialog(
+            onDismissRequest = { },
+            text = {
+                Column(Modifier.fillMaxWidth()) {
+                    Text("正在下载 v${st.info.version}… ${st.progress}%")
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(progress = { st.progress / 100f }, Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {}
+        )
+        is UpdateCheckState.ReadyToInstall -> AlertDialog(
+            onDismissRequest = { updateState = UpdateCheckState.Idle },
+            title = { Text("下载完成") },
+            text = { Text("现在安装 v${st.version}？") },
+            confirmButton = {
+                TextButton(onClick = { installUpdate(st.file, st.version) }) { Text("安装") }
+            },
+            dismissButton = {
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("取消") }
+            }
+        )
+        is UpdateCheckState.Failed -> AlertDialog(
+            onDismissRequest = { updateState = UpdateCheckState.Idle },
+            text = { Text(st.message) },
+            confirmButton = {
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("知道了") }
+            }
+        )
+        UpdateCheckState.Idle -> {}
     }
 
     Scaffold(
@@ -209,7 +347,7 @@ fun SettingsScreen(
             // About
             Spacer(modifier = Modifier.height(16.dp))
             SectionTitle(AppStrings.t("about"))
-            SettingRow(icon = {}, title = AppStrings.t("version"), value = viewModel.versionName) {}
+            SettingRow(icon = {}, title = AppStrings.t("version"), value = viewModel.versionName) { startCheck() }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -328,6 +466,17 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp)
     )
+}
+
+/** 手动检查更新的状态机（点“版本”行触发） */
+private sealed interface UpdateCheckState {
+    data object Idle
+    data object Checking
+    data class UpToDate(val latestVersion: String)
+    data class NewVersion(val info: UpdateChecker.UpdateInfo)
+    data class Downloading(val info: UpdateChecker.UpdateInfo, val progress: Int)
+    data class ReadyToInstall(val file: File, val version: String)
+    data class Failed(val message: String)
 }
 
 @Composable
