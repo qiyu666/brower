@@ -42,6 +42,7 @@ object LocalDownload {
     ) {
         val key = "__dl${base.id}"
         try {
+            LocalNotification.postStarted(context, base.id, fileName)
             val jsUrl = url.replace("\\", "\\\\").replace("'", "\\'")
             withContext(Dispatchers.Main) {
                 webView.evaluateJavascript(
@@ -175,6 +176,7 @@ object LocalDownload {
         mimeType: String?
     ) {
         try {
+            LocalNotification.postStarted(context, base.id, fileName?.takeIf { it.isNotBlank() } ?: "download")
             val comma = url.indexOf(',')
             if (comma < 6) throw Exception("Invalid data URI")
             val head = url.substring(5, comma)
