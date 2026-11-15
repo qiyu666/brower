@@ -1,6 +1,7 @@
 package com.qiyu.browser.data.repository
 
 import android.content.Context
+import android.content.res.Resources
 import com.qiyu.browser.model.BrowserConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,10 +38,29 @@ class SettingsRepository(private val context: Context) {
             dataSaver = prefs.getBoolean("data_saver", false),
             autoPlayVideos = prefs.getBoolean("auto_play", false),
             blockPopups = prefs.getBoolean("block_popups", true),
-            language = prefs.getString("language", "en") ?: "en",
+            language = resolveLanguage(),
             useDesktopMode = prefs.getBoolean("use_desktop", false),
             downloadDir = prefs.getString("download_dir", "default") ?: "default"
         )
+    }
+
+    /**
+     * 首次打开（尚无语言偏好）时自动识别系统语言环境并写入偏好；
+     * 之后以用户手动选择为准，不再覆盖。
+     */
+    private fun resolveLanguage(): String {
+        if (prefs.contains("language")) {
+            return prefs.getString("language", "en") ?: "en"
+        }
+        val supported = setOf("en", "zh")
+        val systemLang = try {
+            Resources.getSystem().configuration.locales[0].language
+        } catch (e: Exception) {
+            java.util.Locale.getDefault().language
+        }
+        val detected = if (systemLang in supported) systemLang else "en"
+        prefs.edit().putString("language", detected).apply()
+        return detected
     }
 
     private fun saveConfig(config: BrowserConfig) {
