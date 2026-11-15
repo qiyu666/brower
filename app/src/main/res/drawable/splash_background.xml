@@ -7,7 +7,7 @@
         </shape>
     </item>
 
-    <!-- N 图标（白色，居中） -->
+    <!-- 应用图标（渐变环 + qiyu，透明底，黑底上显示） -->
     <item
         android:gravity="center"
         android:width="96dp"

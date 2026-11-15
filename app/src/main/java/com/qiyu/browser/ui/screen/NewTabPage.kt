@@ -75,7 +75,7 @@ fun NewTabPage(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
+                painter = painterResource(R.drawable.ic_logo_full),
                 contentDescription = null,
                 modifier = Modifier.size(96.dp)
             )
