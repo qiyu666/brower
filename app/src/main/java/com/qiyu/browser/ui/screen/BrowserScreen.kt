@@ -27,7 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.History
@@ -75,9 +82,9 @@ fun BrowserScreen(
     val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
 
+    Box(modifier) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (!showNewTab) {
@@ -314,35 +321,65 @@ fun BrowserScreen(
         )
     }
 
-    // Menu dialog
-    if (showMenu) {
-        AlertDialog(
-            onDismissRequest = { showMenu = false },
-            text = {
-                Column {
-                    MenuRow("\u4e66\u7b7e", Icons.Filled.Star) { onNavigateToBookmarks(); showMenu = false }
-                    MenuRow("\u5386\u53f2\u8bb0\u5f55", Icons.Filled.History) { onNavigateToHistory(); showMenu = false }
-                    MenuRow("\u4e0b\u8f7d", Icons.Filled.Download) { onNavigateToDownloads(); showMenu = false }
-                    MenuRow("\u79c1\u5bc6\u6a21\u5f0f", Icons.Filled.Face) {
+    // 底部菜单抽屉：点 ⋮ 弹出（上滑动画 + 遮罩），点项或点遮罩/下滑关闭
+    val sheetOffset by animateDpAsState(
+        targetValue = if (showMenu) 0.dp else 520.dp,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "menuSheetOffset"
+    )
+    val sheetScrim by animateFloatAsState(
+        targetValue = if (showMenu) 0.5f else 0f,
+        animationSpec = tween(250),
+        label = "menuSheetScrim"
+    )
+    if (showMenu || sheetOffset < 519.dp) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = sheetScrim))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { if (showMenu) showMenu = false }
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .matchParentWidth()
+                    .offset(y = sheetOffset)
+            ) {
+                OverflowMenuSheet(
+                    onBookmarks = {
+                        onNavigateToBookmarks()
+                        showMenu = false
+                    },
+                    onHistory = {
+                        onNavigateToHistory()
+                        showMenu = false
+                    },
+                    onDownloads = {
+                        onNavigateToDownloads()
+                        showMenu = false
+                    },
+                    onIncognito = {
                         val tabId = tabsVM.addTab("", incognito = true)
                         webManager.createWebView(tabId, incognito = true)
                         webManager.showTab(tabId)
                         showMenu = false
-                    }
-                    MenuRow("\u8bbe\u7f6e", Icons.Filled.Settings) { onNavigateToSettings(); showMenu = false }
-                    MenuRow("\u5206\u4eab", Icons.Filled.Share) {
+                    },
+                    onSettings = {
+                        onNavigateToSettings()
+                        showMenu = false
+                    },
+                    onShare = {
                         activeTab?.let { onShare(it.url, it.title) }
                         showMenu = false
                     }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showMenu = false }) {
-                    Text("\u53d6\u6d88")
-                }
+                )
             }
-        )
+        }
+    }
     }
 }
 
@@ -438,26 +475,82 @@ fun TabSwitcherOverlay(
     }
 }
 
+/** 底部菜单面板：拖拽把手 + 图标网格（上排主色/常用，下排常规），仿 Chrome 溢出菜单 */
 @Composable
-fun MenuRow(label: String, icon: ImageVector, onClick: () -> Unit) {
-    Row(
+private fun OverflowMenuSheet(
+    onBookmarks: () -> Unit,
+    onHistory: () -> Unit,
+    onDownloads: () -> Unit,
+    onIncognito: () -> Unit,
+    onSettings: () -> Unit,
+    onShare: () -> Unit
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(top = 12.dp, bottom = 28.dp)
+    ) {
+        // 拖拽把手
+        Box(
+            modifier = Modifier
+                .size(width = 32.dp, height = 4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                .align(Alignment.CenterHorizontally)
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            GridMenuItem(Icons.Filled.Star, "书签", accent = true, onClick = onBookmarks)
+            GridMenuItem(Icons.Filled.History, "历史记录", accent = true, onClick = onHistory)
+            GridMenuItem(Icons.Filled.Download, "下载", accent = true, onClick = onDownloads)
+        }
+        Spacer(Modifier.height(12.dp))
+        // 分隔线
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            GridMenuItem(Icons.Filled.Face, "私密模式", onClick = onIncognito)
+            GridMenuItem(Icons.Filled.Settings, "设置", onClick = onSettings)
+            GridMenuItem(Icons.Filled.Share, "分享", onClick = onShare)
+        }
+    }
+}
+
+/** 网格单元格：图标在上、标签在下，整格可点 */
+@Composable
+private fun GridMenuItem(
+    icon: ImageVector,
+    label: String,
+    accent: Boolean = false,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
+            tint = if (accent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            modifier = Modifier.size(24.dp)
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
