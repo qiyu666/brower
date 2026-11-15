@@ -69,11 +69,12 @@ fun SettingsScreen(
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
             } catch (e: Exception) { "" }
             val info = withContext(Dispatchers.IO) { UpdateChecker.fetchLatest() }
-            updateState = when {
+            val newState: UpdateCheckState = when {
                 info == null -> UpdateCheckState.Failed("检查失败：无法连接 GitHub，请稍后重试")
                 !UpdateChecker.isNewer(info.version, current) -> UpdateCheckState.UpToDate(info.version)
                 else -> UpdateCheckState.NewVersion(info)
             }
+            updateState = newState
         }
     }
 
@@ -84,11 +85,12 @@ fun SettingsScreen(
             val ok = UpdateChecker.download(info.directUrl, target) { pct ->
                 updateState = UpdateCheckState.Downloading(info, pct)
             }
-            updateState = if (ok) {
+            val newState: UpdateCheckState = if (ok) {
                 UpdateCheckState.ReadyToInstall(target, info.version)
             } else {
                 UpdateCheckState.Failed("下载失败：直连与 gh-proxy 代理均不可用，请稍后重试")
             }
+            updateState = newState
         }
     }
 
@@ -470,8 +472,8 @@ private fun SectionTitle(text: String) {
 
 /** 手动检查更新的状态机（点“版本”行触发） */
 private sealed interface UpdateCheckState {
-    data object Idle
-    data object Checking
+    object Idle
+    object Checking
     data class UpToDate(val latestVersion: String)
     data class NewVersion(val info: UpdateChecker.UpdateInfo)
     data class Downloading(val info: UpdateChecker.UpdateInfo, val progress: Int)
