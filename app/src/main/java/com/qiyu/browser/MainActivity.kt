@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
 
                     // 应用内下载提醒：终态事件横幅（NavHost 上方，所有页面可见）
                     val lastEvent by downloadsVM.lastEvent.collectAsStateWithLifecycle()
-                    var consumedToken by remember { mutableLongOf(0L) }
+                    var consumedToken: Long by remember { mutableStateOf(0L) }
                     val activeEvent = lastEvent?.takeIf { it.token > consumedToken }
 
                     Column(modifier = Modifier.fillMaxSize()) {
