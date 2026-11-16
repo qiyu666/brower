@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
+import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.DownloadsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,14 +51,14 @@ fun DownloadsScreen(
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    "Downloads",
+                    AppStrings.t("downloads"),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (downloads.isNotEmpty()) {
                     Text(
-                        "Clear",
+                        AppStrings.t("clear"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
@@ -83,17 +84,17 @@ fun DownloadsScreen(
                 FilterChip(
                     selected = filter == null,
                     onClick = { viewModel.setFilterStatus(null) },
-                    label = { Text("All", style = MaterialTheme.typography.labelMedium) }
+                    label = { Text(AppStrings.t("all"), style = MaterialTheme.typography.labelMedium) }
                 )
                 FilterChip(
                     selected = filter == DownloadStatus.IN_PROGRESS,
                     onClick = { viewModel.setFilterStatus(DownloadStatus.IN_PROGRESS) },
-                    label = { Text("Active", style = MaterialTheme.typography.labelMedium) }
+                    label = { Text(AppStrings.t("active"), style = MaterialTheme.typography.labelMedium) }
                 )
                 FilterChip(
                     selected = filter == DownloadStatus.COMPLETED,
                     onClick = { viewModel.setFilterStatus(DownloadStatus.COMPLETED) },
-                    label = { Text("Done", style = MaterialTheme.typography.labelMedium) }
+                    label = { Text(AppStrings.t("done"), style = MaterialTheme.typography.labelMedium) }
                 )
             }
 
@@ -104,7 +105,7 @@ fun DownloadsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "No downloads",
+                        AppStrings.t("no_downloads"),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
@@ -143,9 +144,9 @@ private fun DownloadItemRow(
         DownloadStatus.IN_PROGRESS ->
             if (item.fileSize > 0) "${item.downloadedSize * 100 / item.fileSize}%"
             else WebUtils.formatFileSize(item.downloadedSize)
-        DownloadStatus.COMPLETED -> "Completed"
-        DownloadStatus.FAILED -> item.errorMsg?.let { "Failed · $it" } ?: "Failed"
-        DownloadStatus.CANCELLED -> "Cancelled"
+        DownloadStatus.COMPLETED -> AppStrings.t("completed")
+        DownloadStatus.FAILED -> item.errorMsg?.let { "${AppStrings.t("failed")} · $it" } ?: AppStrings.t("failed")
+        DownloadStatus.CANCELLED -> AppStrings.t("cancelled")
     }
 
     Row(
@@ -188,14 +189,14 @@ private fun DownloadItemRow(
         if (canAct) {
             IconButton(onClick = onOpenWith, modifier = Modifier.size(24.dp)) {
                 Icon(
-                    Icons.Filled.OpenInNew, "用其他应用打开",
+                    Icons.Filled.OpenInNew, AppStrings.t("open_with"),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
             IconButton(onClick = onShowInFolder, modifier = Modifier.size(24.dp)) {
                 Icon(
-                    Icons.Filled.Folder, "显示在文件夹中",
+                    Icons.Filled.Folder, AppStrings.t("show_in_folder"),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )

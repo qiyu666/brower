@@ -50,6 +50,7 @@ import com.qiyu.browser.model.HistoryItem
 import com.qiyu.browser.ui.component.AddressBar
 import com.qiyu.browser.ui.component.BottomNav
 import com.qiyu.browser.ui.component.TabStrip
+import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.util.SearchSuggester
@@ -188,7 +189,7 @@ fun BrowserScreen(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Text(
-                        "Incognito mode - browsing data won't be saved",
+                        AppStrings.t("incognito_banner"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(4.dp)
@@ -625,9 +626,9 @@ private fun TabCard2(
     val host = try {
         if (tab.url.isNotEmpty() && tab.url != "about:blank") {
             java.net.URL(tab.url).host.ifEmpty { tab.url }
-        } else "新标签页"
+        } else AppStrings.t("new_tab")
     } catch (e: Exception) {
-        if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else "新标签页"
+        if (tab.url.isNotEmpty() && tab.url != "about:blank") tab.url else AppStrings.t("new_tab")
     }
 
     Column(
@@ -656,7 +657,7 @@ private fun TabCard2(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (host.isNotEmpty() && host != "新标签页") host.first().uppercase() else "?",
+                        text = if (host.isNotEmpty() && host != AppStrings.t("new_tab")) host.first().uppercase() else "?",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         fontSize = 10.sp

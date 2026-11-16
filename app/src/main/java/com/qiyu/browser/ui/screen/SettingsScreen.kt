@@ -243,9 +243,9 @@ fun SettingsScreen(
                 icon = { Icon(Icons.Default.DarkMode, "", modifier = Modifier.size(20.dp)) },
                 title = AppStrings.t("dark_mode"),
                 value = when (config.darkMode) {
-                    "auto" -> "Auto"
-                    "dark" -> "Dark"
-                    else -> "Light"
+                    "auto" -> AppStrings.t("dark_auto")
+                    "dark" -> AppStrings.t("dark_dark")
+                    else -> AppStrings.t("dark_light")
                 }
             ) {
                 // Cycle: auto -> light -> dark -> auto

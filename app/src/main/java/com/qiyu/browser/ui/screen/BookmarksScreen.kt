@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.qiyu.browser.model.Bookmark
+import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.BookmarksViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +57,7 @@ fun BookmarksScreen(
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    if (folder != null) folder!!.title else "Bookmarks",
+                    if (folder != null) folder!!.title else AppStrings.t("bookmarks"),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface
@@ -94,7 +95,7 @@ fun BookmarksScreen(
                             viewModel.setSearchQuery(it)
                         },
                         singleLine = true,
-                        placeholder = { Text("Search") },
+                        placeholder = { Text(AppStrings.t("search")) },
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 8.dp)
@@ -125,14 +126,14 @@ fun BookmarksScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "← Bookmarks",
+                        "← " + AppStrings.t("bookmarks"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { viewModel.closeFolder() }
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "New folder",
+                        AppStrings.t("folder_new"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -149,7 +150,7 @@ fun BookmarksScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "No bookmarks yet",
+                        AppStrings.t("no_bookmarks"),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
@@ -183,12 +184,12 @@ fun BookmarksScreen(
     if (showFolderDialog) {
         AlertDialog(
             onDismissRequest = { showFolderDialog = false },
-            title = { Text("New folder") },
+            title = { Text(AppStrings.t("folder_new")) },
             text = {
                 OutlinedTextField(
                     value = newFolderName,
                     onValueChange = { newFolderName = it },
-                    label = { Text("Folder name") },
+                    label = { Text(AppStrings.t("folder")) },
                     singleLine = true
                 )
             },
@@ -197,10 +198,10 @@ fun BookmarksScreen(
                     viewModel.createFolder(newFolderName)
                     newFolderName = ""
                     showFolderDialog = false
-                }) { Text("Create") }
+                }) { Text(AppStrings.t("create")) }
             },
             dismissButton = {
-                TextButton(onClick = { showFolderDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showFolderDialog = false }) { Text(AppStrings.t("cancel")) }
             }
         )
     }
@@ -235,7 +236,7 @@ private fun BookmarkFolderRow(
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                "Folder",
+                AppStrings.t("folder"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )

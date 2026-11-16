@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.qiyu.browser.model.HistoryItem
+import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.HistoryViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,8 +46,8 @@ private fun dayLabel(key: Long): String {
     val nowKey = dayKey(System.currentTimeMillis())
     val diff = ((nowKey - key) / 86_400_000L).toInt()
     return when (diff) {
-        0 -> "Today"
-        1 -> "Yesterday"
+        0 -> AppStrings.t("hist_today")
+        1 -> AppStrings.t("hist_yesterday")
         else -> java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(java.util.Date(key))
     }
 }
@@ -84,14 +85,14 @@ fun HistoryScreen(
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    "History",
+                    AppStrings.t("history"),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (items.isNotEmpty()) {
                     Text(
-                        "Clear",
+                        AppStrings.t("clear"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
@@ -127,7 +128,7 @@ fun HistoryScreen(
                         viewModel.setSearchQuery(it)
                     },
                     singleLine = true,
-                    placeholder = { Text("Search") },
+                    placeholder = { Text(AppStrings.t("search")) },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
@@ -141,7 +142,7 @@ fun HistoryScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "No browsing history",
+                        AppStrings.t("no_history"),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
@@ -175,29 +176,29 @@ fun HistoryScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear history") },
-            text = { Text("清除哪些时间的浏览记录？") },
+            title = { Text(AppStrings.t("clear_history_title")) },
+            text = { Text(AppStrings.t("clear_which")) },
             confirmButton = {
                 TextButton(onClick = {
                     showClearDialog = false
                     viewModel.clearBefore(0)
-                }) { Text("All", color = MaterialTheme.colorScheme.error) }
+                }) { Text(AppStrings.t("all"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = {
                         showClearDialog = false
                         viewModel.clearBefore(1)
-                    }) { Text("1 day") }
+                    }) { Text(AppStrings.t("clear_1d")) }
                     TextButton(onClick = {
                         showClearDialog = false
                         viewModel.clearBefore(7)
-                    }) { Text("7 days") }
+                    }) { Text(AppStrings.t("clear_7d")) }
                     TextButton(onClick = {
                         showClearDialog = false
                         viewModel.clearBefore(30)
-                    }) { Text("1 month") }
-                    TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                    }) { Text(AppStrings.t("clear_1m")) }
+                    TextButton(onClick = { showClearDialog = false }) { Text(AppStrings.t("cancel")) }
                 }
             }
         )
