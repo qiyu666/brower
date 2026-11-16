@@ -31,7 +31,9 @@ fun BrowserNavHost(
     onOpenWith: (String, String?) -> Unit,
     onShowInFolder: () -> Unit,
     onOpenUrlInCurrentTab: (String) -> Unit,
-    onScanQr: () -> Unit
+    onScanQr: () -> Unit,
+    onClearData: (Boolean, Boolean, Boolean) -> Unit,
+    onRetryDownload: (com.qiyu.browser.model.DownloadItem) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -49,7 +51,8 @@ fun BrowserNavHost(
                 onNavigateToDownloads = { navController.navigate(Destinations.DOWNLOADS) },
                 onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) },
                 onShare = onShare,
-                onScanQr = onScanQr
+                onScanQr = onScanQr,
+                onClearData = onClearData
             )
         }
         composable(Destinations.BOOKMARKS) {
@@ -78,7 +81,8 @@ fun BrowserNavHost(
                 onBack = { navController.popBackStack() },
                 onOpenFile = onOpenFile,
                 onOpenWith = onOpenWith,
-                onShowInFolder = onShowInFolder
+                onShowInFolder = onShowInFolder,
+                onRetry = onRetryDownload
             )
         }
         composable(Destinations.SETTINGS) {

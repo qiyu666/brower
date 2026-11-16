@@ -136,8 +136,9 @@ class WebViewManager(
                 javaScriptEnabled = true
                 domStorageEnabled = !incognito
                 databaseEnabled = !incognito
-                setSupportZoom(false)
-                builtInZoomControls = false
+                setSupportZoom(true)
+                builtInZoomControls = true
+                zoomControlsEnabled = false
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 textZoom = config.fontSize
@@ -320,6 +321,22 @@ class WebViewManager(
 
     fun loadUrl(tabId: Int, url: String) {
         webViews[tabId]?.loadUrl(url)
+    }
+
+    /** 页面缩放（双指缩放默认开启，此为工具栏/菜单档位） */
+    fun setZoom(tabId: Int, scalePercent: Int) {
+        webViews[tabId]?.setZoomScale(scalePercent / 100f)
+    }
+
+    /** 当前缩放百分比（取整到 10 的倍数） */
+    fun currentZoom(tabId: Int): Int {
+        val s = webViews[tabId]?.zoomScale ?: 1f
+        return (s * 100).roundToInt() / 10 * 10
+    }
+
+    /** 清除所有 WebView 的缓存（一键清理用） */
+    fun clearAllCache() {
+        webViews.values.forEach { it.clearCache() }
     }
 
     private fun createWebViewClient(tabId: Int): WebViewClient {

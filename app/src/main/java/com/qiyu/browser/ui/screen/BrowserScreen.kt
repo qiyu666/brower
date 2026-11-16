@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -74,6 +76,7 @@ fun BrowserScreen(
     onNavigateToSettings: () -> Unit,
     onShare: (String, String) -> Unit,
     onScanQr: () -> Unit,
+    onClearData: (Boolean, Boolean, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
@@ -81,6 +84,11 @@ fun BrowserScreen(
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showTrafficDialog by remember { mutableStateOf(false) }
+    var showZoomDialog by remember { mutableStateOf(false) }
+    var showClearDataDialog by remember { mutableStateOf(false) }
+    var clearSelHistory by remember { mutableStateOf(true) }
+    var clearSelCookies by remember { mutableStateOf(true) }
+    var clearSelCache by remember { mutableStateOf(true) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
     val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
@@ -333,6 +341,98 @@ fun BrowserScreen(
         )
     }
 
+    // 缩放档位对话框（双指缩放已默认开启，这是快捷档位）
+    if (showZoomDialog && activeTab != null) {
+        val current = webManager.currentZoom(activeTab!!.id)
+        AlertDialog(
+            onDismissRequest = { showZoomDialog = false },
+            title = { Text("缩放") },
+            text = {
+                Column {
+                    listOf(50, 75, 100, 125, 150, 200).forEach { pct ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    webManager.setZoom(activeTab!!.id, pct)
+                                    showZoomDialog = false
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (current == pct) Icons.Filled.Star else Icons.Filled.Close,
+                                null,
+                                modifier = Modifier.size(18.dp).padding(end = 10.dp),
+                                tint = if (current == pct) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+                            )
+                            Text(
+                                "${pct}%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showZoomDialog = false }) { Text("完成") }
+            }
+        )
+    }
+
+    // 一键清理对话框：历史 / Cookie 与站点数据 / 缓存
+    if (showClearDataDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDataDialog = false },
+            title = { Text("清理浏览数据") },
+            text = {
+                Column {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { clearSelHistory = !clearSelHistory }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = clearSelHistory, onCheckedChange = { clearSelHistory = it })
+                        Text("浏览历史", modifier = Modifier.weight(1f))
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { clearSelCookies = !clearSelCookies }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = clearSelCookies, onCheckedChange = { clearSelCookies = it })
+                        Text("Cookie 与站点数据", modifier = Modifier.weight(1f))
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { clearSelCache = !clearSelCache }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = clearSelCache, onCheckedChange = { clearSelCache = it })
+                        Text("缓存", modifier = Modifier.weight(1f))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClearData(clearSelHistory, clearSelCookies, clearSelCache)
+                    showClearDataDialog = false
+                }) { Text("清理", color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDataDialog = false }) { Text("取消") }
+            }
+        )
+    }
+
     // 底部菜单抽屉：点 ⋮ 弹出（上滑动画 + 遮罩），点项或点遮罩/下滑关闭
     val sheetOffset by animateDpAsState(
         targetValue = if (showMenu) 0.dp else 520.dp,
@@ -395,6 +495,14 @@ fun BrowserScreen(
                     onScanQr = {
                         showMenu = false
                         onScanQr()
+                    },
+                    onZoom = {
+                        showMenu = false
+                        showZoomDialog = true
+                    },
+                    onClearData = {
+                        showMenu = false
+                        showClearDataDialog = true
                     }
                 )
             }
@@ -528,7 +636,9 @@ private fun OverflowMenuSheet(
     onSettings: () -> Unit,
     onShare: () -> Unit,
     onTraffic: () -> Unit,
-    onScanQr: () -> Unit
+    onScanQr: () -> Unit,
+    onZoom: () -> Unit,
+    onClearData: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -570,6 +680,8 @@ private fun OverflowMenuSheet(
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
             GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
+            GridMenuItem(Icons.Filled.ZoomIn, "缩放", modifier = Modifier.weight(1f), onClick = onZoom)
+            GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
         }
     }
 }

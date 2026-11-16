@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ fun DownloadsScreen(
     onOpenFile: (String) -> Unit,
     onOpenWith: (String, String?) -> Unit,
     onShowInFolder: () -> Unit,
+    onRetry: (DownloadItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
@@ -63,6 +65,14 @@ fun DownloadsScreen(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .clickable { viewModel.clearCompleted() }
+                            .padding(end = 8.dp)
+                    )
+                    Text(
+                        AppStrings.t("clear_all"),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .clickable { viewModel.clearAll() }
                             .padding(end = 12.dp)
                     )
                 }
@@ -123,7 +133,8 @@ fun DownloadsScreen(
                             onOpenWith = {
                                 item.filePath?.let { onOpenWith(it, WebUtils.mimeTypeForFile(item.fileName)) }
                             },
-                            onShowInFolder = onShowInFolder
+                            onShowInFolder = onShowInFolder,
+                            onRetry = { onRetry(item) }
                         )
                     }
                 }
@@ -138,7 +149,8 @@ private fun DownloadItemRow(
     onOpen: () -> Unit,
     onDelete: () -> Unit,
     onOpenWith: () -> Unit,
-    onShowInFolder: () -> Unit
+    onShowInFolder: () -> Unit,
+    onRetry: () -> Unit
 ) {
     val statusText = when (item.status) {
         DownloadStatus.IN_PROGRESS ->
@@ -186,6 +198,17 @@ private fun DownloadItemRow(
             )
         }
         val canAct = item.status == DownloadStatus.COMPLETED && item.filePath != null
+        val canRetry = (item.status == DownloadStatus.FAILED || item.status == DownloadStatus.CANCELLED) &&
+            (item.url.startsWith("http://") || item.url.startsWith("https://"))
+        if (canRetry) {
+            IconButton(onClick = onRetry, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Filled.Redo, "重试",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
         if (canAct) {
             IconButton(onClick = onOpenWith, modifier = Modifier.size(24.dp)) {
                 Icon(

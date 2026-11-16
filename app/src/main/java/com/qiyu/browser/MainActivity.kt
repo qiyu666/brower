@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import android.app.DownloadManager
 import android.os.Environment
 import android.net.Uri
+import android.widget.Toast
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
 import com.qiyu.browser.navigation.BrowserNavHost
@@ -192,6 +193,23 @@ class MainActivity : ComponentActivity() {
                         },
                         onScanQr = {
                             startActivity(Intent(this, QRScanActivity::class.java))
+                        },
+                        onClearData = { clearHistory, clearCookies, clearCache ->
+                            if (clearHistory) historyVM.clearAll()
+                            if (clearCookies) {
+                                val cm = android.webkit.CookieManager.getInstance()
+                                cm.removeAllCookies(null)
+                                cm.flush()
+                            }
+                            if (clearCache) webManager.clearAllCache()
+                            Toast.makeText(this, "已清理", Toast.LENGTH_SHORT).show()
+                        },
+                        onRetryDownload = { item ->
+                            if (item.url.startsWith("http://") || item.url.startsWith("https://")) {
+                                DownloadService.start(this, item.url, item.fileName, item.mimeType, item.id, null)
+                            } else {
+                                Toast.makeText(this, "该文件来自页面资源（blob），无法重新下载，请在原页面重试", Toast.LENGTH_LONG).show()
+                            }
                         }
                     )
                 }
