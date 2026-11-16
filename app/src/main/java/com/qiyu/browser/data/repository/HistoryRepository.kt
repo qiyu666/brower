@@ -26,4 +26,6 @@ class HistoryRepository(private val dao: HistoryDao) {
     suspend fun deleteById(id: Long) = dao.deleteById(id)
 
     suspend fun deleteBefore(time: Long) = dao.deleteBefore(time)
+
+    suspend fun suggest(query: String, limit: Int = 6): List<HistoryItem> = dao.suggest(query, limit)
 }

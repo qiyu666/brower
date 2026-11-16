@@ -33,6 +33,14 @@ object WebUtils {
         }
     }
 
+    fun engineLabel(engine: String): String = when (engine) {
+        "bing" -> "必应"
+        "duckduckgo" -> "DuckDuckGo"
+        "baidu" -> "百度"
+        "yahoo" -> "Yahoo"
+        else -> "Google"
+    }
+
     fun resolveUrlOrSearch(input: String, engine: String = "google"): String {
         return if (isUrl(input)) normalizeUrl(input) else buildSearchUrl(input, engine)
     }

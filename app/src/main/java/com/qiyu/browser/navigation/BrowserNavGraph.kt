@@ -47,7 +47,8 @@ fun BrowserNavHost(
                 onNavigateToHistory = { navController.navigate(Destinations.HISTORY) },
                 onNavigateToDownloads = { navController.navigate(Destinations.DOWNLOADS) },
                 onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) },
-                onShare = onShare
+                onShare = onShare,
+                onScanQr = onScanQr
             )
         }
         composable(Destinations.BOOKMARKS) {

@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.DataUsage
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -51,6 +52,7 @@ import com.qiyu.browser.ui.component.BottomNav
 import com.qiyu.browser.ui.component.TabStrip
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.util.WebUtils
+import com.qiyu.browser.util.SearchSuggester
 import com.qiyu.browser.viewmodel.BookmarksViewModel
 import com.qiyu.browser.viewmodel.HistoryViewModel
 import com.qiyu.browser.viewmodel.SettingsViewModel
@@ -70,6 +72,7 @@ fun BrowserScreen(
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onShare: (String, String) -> Unit,
+    onScanQr: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
@@ -133,6 +136,12 @@ fun BrowserScreen(
                     val resolvedUrl = WebUtils.resolveUrlOrSearch(input, config.searchEngine)
                     webManager.loadUrl(tab.id, resolvedUrl)
                     tabsVM.updateTabState(tab.id, url = resolvedUrl, isLoading = true)
+                },
+                searchEngine = config.searchEngine,
+                localSuggest = { q -> historyVM.suggest(q) },
+                remoteSuggest = { q ->
+                    val engine = settingsVM.config.value.searchEngine
+                    SearchSuggester.fetchSuggests(engine, q)
                 },
                 onBack = {
                     if (webManager.goBack(tab.id)) {
@@ -381,6 +390,10 @@ fun BrowserScreen(
                     onTraffic = {
                         showMenu = false
                         showTrafficDialog = true
+                    },
+                    onScanQr = {
+                        showMenu = false
+                        onScanQr()
                     }
                 )
             }
@@ -513,7 +526,8 @@ private fun OverflowMenuSheet(
     onIncognito: () -> Unit,
     onSettings: () -> Unit,
     onShare: () -> Unit,
-    onTraffic: () -> Unit
+    onTraffic: () -> Unit,
+    onScanQr: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -554,6 +568,7 @@ private fun OverflowMenuSheet(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
+            GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
         }
     }
 }

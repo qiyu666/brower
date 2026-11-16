@@ -39,4 +39,7 @@ interface HistoryDao {
 
     @Query("DELETE FROM history WHERE visitTime < :time")
     suspend fun deleteBefore(time: Long)
+
+    @Query("SELECT * FROM history WHERE isIncognito = 0 AND (title LIKE '%' || :q || '%' OR url LIKE '%' || :q || '%') ORDER BY visitTime DESC LIMIT :limit")
+    suspend fun suggest(q: String, limit: Int = 6): List<HistoryItem>
 }
