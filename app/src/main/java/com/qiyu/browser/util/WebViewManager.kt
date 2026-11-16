@@ -355,17 +355,10 @@ class WebViewManager(
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             conn.instanceFollowRedirects = true
                             conn.connectTimeout = 15_000
-                            val reqHeaders = request.requestHeaders
-                            if (reqHeaders != null) {
-                                for (key in reqHeaders.keys) {
-                                    val values = reqHeaders[key]
-                                    if (values != null) {
-                                        for (value in values) {
-                                            conn.setRequestProperty(key, value)
-                                        }
-                                    }
-                                }
-                            }
+                            // 请求头里只有 UA 重要（决定桌面/移动版渲染）；其余（Referer 等）对主文档无关紧要，
+                            // 不遍历 Java Map（当前编译环境对其类型推断有缺陷）
+                            val ua = webViews[tabId]?.settings?.userAgentString
+                            if (ua != null) conn.setRequestProperty("User-Agent", ua)
                             val cm = android.webkit.CookieManager.getInstance()
                             cm.getCookie(url.toString())?.let { conn.setRequestProperty("Cookie", it) }
                             conn.connect()
