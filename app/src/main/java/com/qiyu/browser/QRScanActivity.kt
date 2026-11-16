@@ -84,7 +84,7 @@ class QRScanActivity : ComponentActivity() {
 
         val topBar = LinearLayout(this)
         topBar.orientation = LinearLayout.HORIZONTAL
-        topBar.setBackgroundColor(0x99000000)
+        topBar.setBackgroundColor(0x99000000.toInt())
         topBar.gravity = Gravity.CENTER_VERTICAL
         val padPx = (12 * resources.displayMetrics.density).toInt()
         topBar.setPadding(padPx, padPx, padPx, padPx)
