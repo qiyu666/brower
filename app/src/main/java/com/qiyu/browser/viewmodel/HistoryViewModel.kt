@@ -34,6 +34,17 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** 清除指定时间段前的历史；days=0 表示全部 */
+    fun clearBefore(days: Int) {
+        viewModelScope.launch {
+            if (days == 0) {
+                repo.clearAll()
+            } else {
+                repo.deleteBefore(System.currentTimeMillis() - days * 86_400_000L)
+            }
+        }
+    }
+
     fun removeItem(item: HistoryItem) {
         viewModelScope.launch {
             repo.deleteById(item.id)

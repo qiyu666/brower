@@ -24,4 +24,6 @@ class HistoryRepository(private val dao: HistoryDao) {
     fun getRecent(): Flow<List<HistoryItem>> = dao.getRecent()
 
     suspend fun deleteById(id: Long) = dao.deleteById(id)
+
+    suspend fun deleteBefore(time: Long) = dao.deleteBefore(time)
 }

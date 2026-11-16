@@ -31,6 +31,15 @@ interface BookmarkDao {
     @Query("SELECT * FROM bookmarks ORDER BY createdAt DESC")
     fun getAll(): Flow<List<Bookmark>>
 
+    @Query("SELECT * FROM bookmarks WHERE parentFolderId IS NULL ORDER BY isFolder DESC, createdAt DESC")
+    fun getRoot(): Flow<List<Bookmark>>
+
+    @Query("SELECT * FROM bookmarks WHERE parentFolderId = :folderId ORDER BY isFolder DESC, createdAt DESC")
+    fun getChildren(folderId: Long): Flow<List<Bookmark>>
+
+    @Query("DELETE FROM bookmarks WHERE id IN (WITH RECURSIVE r AS (SELECT id FROM bookmarks WHERE id = :folderId UNION ALL SELECT b.id FROM bookmarks b JOIN r ON b.parentFolderId = r.id) SELECT id FROM r)")
+    suspend fun deleteFolderCascade(folderId: Long)
+
     @Query("SELECT * FROM bookmarks WHERE title LIKE '%' || :query || '%' OR url LIKE '%' || :query || '%' ORDER BY createdAt DESC")
     fun search(query: String): Flow<List<Bookmark>>
 

@@ -21,6 +21,29 @@ import com.qiyu.browser.model.HistoryItem
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.HistoryViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.util.Calendar
+
+private data class DaySection(val label: String, val items: List<HistoryItem>)
+
+/** 本地时区当日 0 点的时间戳（分组 key） */
+private fun dayKey(time: Long): Long {
+    val c = Calendar.getInstance().apply { timeInMillis = time }
+    c.set(Calendar.HOUR_OF_DAY, 0)
+    c.set(Calendar.MINUTE, 0)
+    c.set(Calendar.SECOND, 0)
+    c.set(Calendar.MILLISECOND, 0)
+    return c.timeInMillis
+}
+
+private fun dayLabel(key: Long): String {
+    val nowKey = dayKey(System.currentTimeMillis())
+    val diff = ((nowKey - key) / 86_400_000L).toInt()
+    return when (diff) {
+        0 -> "Today"
+        1 -> "Yesterday"
+        else -> java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(java.util.Date(key))
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +56,12 @@ fun HistoryScreen(
     val items by viewModel.historyItems.collectAsStateWithLifecycle()
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     var searchInput by remember { mutableStateOf("") }
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    // 按天分组（items 本身按 visitTime 降序，分组保持顺序）
+    val daySections = remember(items) {
+        items.groupBy { dayKey(it.visitTime) }.map { (key, list) -> DaySection(dayLabel(key), list) }
+    }
 
     Scaffold(
         topBar = {
@@ -55,11 +84,11 @@ fun HistoryScreen(
                 )
                 if (items.isNotEmpty()) {
                     Text(
-                        "Clear All",
+                        "Clear",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
-                            .clickable { viewModel.clearAll() }
+                            .clickable { showClearDialog = true }
                             .padding(end = 12.dp)
                     )
                 }
@@ -113,18 +142,60 @@ fun HistoryScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(items) { item ->
-                        HistoryItemRow(
-                            item = item,
-                            onOpen = { onOpenUrl(item.url) },
-                            onDelete = { viewModel.removeItem(item) }
-                        )
+                    items(daySections) { section ->
+                        item {
+                            Text(
+                                section.label,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        items(section.items) { item ->
+                            HistoryItemRow(
+                                item = item,
+                                onOpen = { onOpenUrl(item.url) },
+                                onDelete = { viewModel.removeItem(item) }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    // 清除对话框：按时间段或全部
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear history") },
+            text = { Text("清除哪些时间的浏览记录？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearDialog = false
+                    viewModel.clearBefore(0)
+                }) { Text("All", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showClearDialog = false
+                        viewModel.clearBefore(1)
+                    }) { Text("1 day") }
+                    TextButton(onClick = {
+                        showClearDialog = false
+                        viewModel.clearBefore(7)
+                    }) { Text("7 days") }
+                    TextButton(onClick = {
+                        showClearDialog = false
+                        viewModel.clearBefore(30)
+                    }) { Text("1 month") }
+                    TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                }
+            }
+        )
     }
 }
 
@@ -159,7 +230,7 @@ private fun HistoryItemRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "${WebUtils.extractDomain(item.url)}  ·  ${WebUtils.formatTime(item.visitTime)}",
+                "${WebUtils.extractDomain(item.url)}  ·  ${WebUtils.formatClock(item.visitTime)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )

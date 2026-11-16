@@ -11,7 +11,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,9 +35,12 @@ fun BookmarksScreen(
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val currentList by viewModel.currentList.collectAsStateWithLifecycle()
+    val folder by viewModel.selectedFolder.collectAsStateWithLifecycle()
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     var searchInput by remember { mutableStateOf("") }
+    var showFolderDialog by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -50,11 +56,15 @@ fun BookmarksScreen(
                         color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    "Bookmarks",
+                    if (folder != null) folder!!.title else "Bookmarks",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                IconButton(onClick = { showFolderDialog = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Add, "新建文件夹", modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary)
+                }
             }
         }
     ) { padding ->
@@ -64,7 +74,7 @@ fun BookmarksScreen(
                 .padding(padding)
         ) {
             // Search bar
-            if (query.isNotEmpty() || bookmarks.size > 20) {
+            if (query.isNotEmpty() || currentList.size > 20) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -105,8 +115,35 @@ fun BookmarksScreen(
                 }
             }
 
+            // 在文件夹内：返回根目录 + 新建文件夹（嵌套）
+            if (folder != null && query.isEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "← Bookmarks",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { viewModel.closeFolder() }
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "New folder",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { showFolderDialog = true }
+                            .padding(end = 8.dp)
+                    )
+                }
+            }
+
             // Bookmarks list
-            if (bookmarks.isEmpty()) {
+            if (currentList.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -122,15 +159,93 @@ fun BookmarksScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp)
                 ) {
-                    items(bookmarks) { bookmark ->
-                        BookmarkItem(
-                            bookmark = bookmark,
-                            onOpen = { onOpenUrl(bookmark.url) },
-                            onDelete = { viewModel.removeBookmark(bookmark) }
-                        )
+                    items(currentList) { bookmark ->
+                        if (bookmark.isFolder) {
+                            BookmarkFolderRow(
+                                folder = bookmark,
+                                onOpen = { viewModel.openFolder(bookmark) },
+                                onDelete = { viewModel.deleteFolder(bookmark) }
+                            )
+                        } else {
+                            BookmarkItem(
+                                bookmark = bookmark,
+                                onOpen = { onOpenUrl(bookmark.url) },
+                                onDelete = { viewModel.removeBookmark(bookmark) }
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+
+    // 新建文件夹对话框
+    if (showFolderDialog) {
+        AlertDialog(
+            onDismissRequest = { showFolderDialog = false },
+            title = { Text("New folder") },
+            text = {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    label = { Text("Folder name") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.createFolder(newFolderName)
+                    newFolderName = ""
+                    showFolderDialog = false
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFolderDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun BookmarkFolderRow(
+    folder: Bookmark,
+    onOpen: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen)
+            .background(
+                MaterialTheme.colorScheme.surface,
+                RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Filled.Folder, "",
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                folder.title,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "Folder",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+            Icon(
+                Icons.Default.Delete, "Delete",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
         }
     }
 }

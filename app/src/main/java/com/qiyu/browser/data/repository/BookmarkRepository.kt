@@ -8,6 +8,16 @@ class BookmarkRepository(private val dao: BookmarkDao) {
 
     suspend fun add(bookmark: Bookmark) = dao.insert(bookmark)
 
+    suspend fun addFolder(name: String, parentFolderId: Long? = null) {
+        dao.insert(Bookmark(title = name, url = "", isFolder = true, parentFolderId = parentFolderId))
+    }
+
+    suspend fun deleteFolderCascade(folderId: Long) = dao.deleteFolderCascade(folderId)
+
+    fun getRoot(): Flow<List<Bookmark>> = dao.getRoot()
+
+    fun getChildren(folderId: Long): Flow<List<Bookmark>> = dao.getChildren(folderId)
+
     suspend fun update(bookmark: Bookmark) = dao.update(bookmark)
 
     suspend fun delete(bookmark: Bookmark) = dao.delete(bookmark)

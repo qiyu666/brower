@@ -93,6 +93,11 @@ object WebUtils {
         }
     }
 
+    /** 一天内条目显示：HH:mm */
+    fun formatClock(timestamp: Long): String {
+        return java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+    }
+
     fun formatTime(timestamp: Long): String {
         val now = System.currentTimeMillis()
         val diff = now - timestamp
