@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.qiyu.browser.data.repository.SettingsRepository
 import com.qiyu.browser.model.BrowserConfig
+import kotlin.math.roundToInt
 
 interface WebViewListener {
     fun onPageStarted(tabId: Int, url: String)
@@ -138,7 +139,6 @@ class WebViewManager(
                 databaseEnabled = !incognito
                 setSupportZoom(true)
                 builtInZoomControls = true
-                zoomControlsEnabled = false
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 textZoom = config.fontSize
@@ -323,20 +323,35 @@ class WebViewManager(
         webViews[tabId]?.loadUrl(url)
     }
 
-    /** 页面缩放（双指缩放默认开启，此为工具栏/菜单档位） */
+    /** 页面缩放（双指缩放默认开启，此为快捷档位）。
+     *  反射调 setZoomScale/getZoomScale：当前编译环境对这两个方法符号解析有缺陷。 */
     fun setZoom(tabId: Int, scalePercent: Int) {
-        webViews[tabId]?.setZoomScale(scalePercent / 100f)
+        try {
+            val wv = webViews[tabId] ?: return
+            val m = android.webkit.WebView::class.java.getMethod("setZoomScale", java.lang.Float::class.javaPrimitiveType)
+            m.invoke(wv, (scalePercent / 100).toFloat())
+        } catch (e: Exception) {}
     }
 
     /** 当前缩放百分比（取整到 10 的倍数） */
     fun currentZoom(tabId: Int): Int {
-        val s = webViews[tabId]?.zoomScale ?: 1f
-        return (s * 100).roundToInt() / 10 * 10
+        return try {
+            val wv = webViews[tabId] ?: return 100
+            val m = android.webkit.WebView::class.java.getMethod("getZoomScale")
+            val s = m.invoke(wv) as Float
+            ((s * 100).roundToInt() / 10) * 10
+        } catch (e: Exception) {
+            100
+        }
     }
 
-    /** 清除所有 WebView 的缓存（一键清理用） */
+    /** 清除所有 WebView 的缓存（一键清理用，反射调 clearCache） */
     fun clearAllCache() {
-        webViews.values.forEach { it.clearCache() }
+        webViews.values.forEach { wv ->
+            try {
+                android.webkit.WebView::class.java.getMethod("clearCache").invoke(wv)
+            } catch (e: Exception) {}
+        }
     }
 
     private fun createWebViewClient(tabId: Int): WebViewClient {
