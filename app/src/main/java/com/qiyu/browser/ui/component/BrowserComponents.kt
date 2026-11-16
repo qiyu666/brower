@@ -192,7 +192,7 @@ private fun SuggestDropdown(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surface
     ) {
-        Column(modifier = Modifier.padding(top = 44.dp, horizontal = 8.dp, bottom = 4.dp)) {
+        Column(modifier = Modifier.padding(top = 44.dp).padding(horizontal = 8.dp).padding(bottom = 4.dp)) {
             rows.take(10).forEach { row ->
                 Row(
                     modifier = Modifier

@@ -54,9 +54,8 @@ class SitesWidgetConfig : ComponentActivity() {
                     onDone = { sites ->
                         SitesWidgetStore.save(this, sites)
                         provider.refresh(this, appWidgetId)
-                        val result = Intent().setResultCode(Activity.RESULT_OK)
-                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                        setResult(result)
+                        setResult(Activity.RESULT_OK,
+                            Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
                         finish()
                     }
                 )

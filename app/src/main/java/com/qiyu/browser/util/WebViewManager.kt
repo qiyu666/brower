@@ -351,7 +351,7 @@ class WebViewManager(
                     val scheme = request.url?.scheme
                     if (scheme == "http" || scheme == "https") {
                         try {
-                            val url = request.url!!.toUrl()
+                            val url = java.net.URL(request.url.toString())
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             conn.instanceFollowRedirects = true
                             conn.connectTimeout = 15_000
