@@ -355,8 +355,8 @@ class WebViewManager(
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             conn.instanceFollowRedirects = true
                             conn.connectTimeout = 15_000
-                            request.requestHeaders?.forEach { name, values ->
-                                values.forEach { value -> conn.setRequestProperty(name, value) }
+                            request.requestHeaders?.entries?.forEach { entry ->
+                                entry.value.forEach { value -> conn.setRequestProperty(entry.key, value) }
                             }
                             val cm = android.webkit.CookieManager.getInstance()
                             cm.getCookie(url.toString())?.let { conn.setRequestProperty("Cookie", it) }
