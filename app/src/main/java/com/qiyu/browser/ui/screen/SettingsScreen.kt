@@ -96,16 +96,6 @@ fun SettingsScreen(
 
     var installPermPending by remember { mutableStateOf(false) }
 
-    // 从「安装未知应用」设置页返回后：若还在等待安装，自动重试（此时权限已授予）
-    val installPermLauncher = rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (updateState is UpdateCheckState.ReadyToInstall) {
-            val st = updateState as UpdateCheckState.ReadyToInstall
-            installUpdate(st.file, st.version)
-        }
-    }
-
     fun installUpdate(file: File, version: String) {
         // Android 8+：应用内安装 APK 需先授予「安装未知应用」权限，否则 ACTION_VIEW 会被拦截
         if (android.os.Build.VERSION.SDK_INT >= 29 &&
@@ -123,6 +113,16 @@ fun SettingsScreen(
             })
         } catch (e: Exception) {
             Toast.makeText(context, "无法打开安装器：${file.absolutePath}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // 从「安装未知应用」设置页返回后：若还在等待安装，自动重试（此时权限已授予）
+    val installPermLauncher = rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (updateState is UpdateCheckState.ReadyToInstall) {
+            val st = updateState as UpdateCheckState.ReadyToInstall
+            installUpdate(st.file, st.version)
         }
     }
 
