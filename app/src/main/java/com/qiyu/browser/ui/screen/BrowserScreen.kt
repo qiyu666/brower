@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -75,6 +76,7 @@ fun BrowserScreen(
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var showTrafficDialog by remember { mutableStateOf(false) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
     val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
@@ -375,10 +377,37 @@ fun BrowserScreen(
                     onShare = {
                         activeTab?.let { onShare(it.url, it.title) }
                         showMenu = false
+                    },
+                    onTraffic = {
+                        showMenu = false
+                        showTrafficDialog = true
                     }
                 )
             }
         }
+    }
+
+    // 流量统计：当前页 + 会话累计
+    if (showTrafficDialog) {
+        val tab = activeTab
+        val pageBytes = tab?.let { webManager.currentPageBytes(it.id) } ?: 0L
+        AlertDialog(
+            onDismissRequest = { showTrafficDialog = false },
+            title = { Text("流量统计") },
+            text = {
+                Column {
+                    Text("当前页面：${WebUtils.formatFileSize(pageBytes)}", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text("本次会话累计：${WebUtils.formatFileSize(webManager.sessionBytesTotal())}", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text("统计主框架加载的字节数，不含缓存命中", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTrafficDialog = false }) { Text("知道了") }
+            }
+        )
     }
     }
 }
@@ -483,7 +512,8 @@ private fun OverflowMenuSheet(
     onDownloads: () -> Unit,
     onIncognito: () -> Unit,
     onSettings: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onTraffic: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -520,6 +550,10 @@ private fun OverflowMenuSheet(
             GridMenuItem(Icons.Filled.Face, "私密模式", modifier = Modifier.weight(1f), onClick = onIncognito)
             GridMenuItem(Icons.Filled.Settings, "设置", modifier = Modifier.weight(1f), onClick = onSettings)
             GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
         }
     }
 }

@@ -107,6 +107,20 @@ class WebViewManager(
     private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
     private val favicons = mutableMapOf<Int, android.graphics.Bitmap>()
 
+    // 流量统计：每页基线 + 会话累计（getTotalVisitedBytes，API 23+）
+    private val pageBaseBytes = mutableMapOf<Int, Long>()
+    private var sessionBytes: Long = 0
+
+    /** 当前页已加载字节数（主框架资源） */
+    @androidx.annotation.MainThread
+    fun currentPageBytes(tabId: Int): Long {
+        val wv = webViews[tabId] ?: return 0L
+        return wv.totalVisitedBytes - (pageBaseBytes[tabId] ?: 0L)
+    }
+
+    /** 会话内累计流量 */
+    fun sessionBytesTotal(): Long = sessionBytes
+
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
         val config = settingsRepo.config.value
         val webView = WebView(context).apply {
@@ -310,6 +324,7 @@ class WebViewManager(
             @Deprecated("Deprecated in API 23")
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                pageBaseBytes[tabId] = view?.totalVisitedBytes ?: 0L
                 if (favicon != null) favicons[tabId] = favicon
                 incognitoDomains[tabId]?.let { set ->
                     val host = try { android.net.Uri.parse(url)?.host } catch (e: Exception) { null }
@@ -320,6 +335,11 @@ class WebViewManager(
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                view?.let { wv ->
+                    val total = wv.totalVisitedBytes
+                    sessionBytes += total - (pageBaseBytes[tabId] ?: 0L)
+                    pageBaseBytes[tabId] = total
+                }
                 view?.evaluateJavascript(DOWNLOAD_NAME_HOOK_JS, null)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
             }
