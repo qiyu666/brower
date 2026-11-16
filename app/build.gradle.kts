@@ -80,6 +80,10 @@ dependencies {
 
     // Coil
     implementation(libs.coil.compose)
+
+    // 二维码扫码
+    implementation(libs.zxing.embedded)
+    implementation(libs.zxing.core)
     
     // SwipeRefreshLayout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")

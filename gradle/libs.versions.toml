@@ -9,6 +9,8 @@ room = "2.6.1"
 navigationCompose = "2.7.7"
 coroutines = "1.9.0"
 coil = "2.7.0"
+zxingEmbedded = "4.3.0"
+zxingCore = "3.5.2"
 
 [libraries]
 # Compose
@@ -42,6 +44,10 @@ coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutin
 
 # Coil
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+# 二维码扫码
+zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

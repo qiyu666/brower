@@ -189,6 +189,9 @@ class MainActivity : ComponentActivity() {
                                 webManager.loadUrl(activeTab.id, url)
                                 tabsVM.updateTabState(activeTab.id, url = url, isLoading = true)
                             }
+                        },
+                        onScanQr = {
+                            startActivity(Intent(this, QRScanActivity::class.java))
                         }
                     )
                 }
@@ -306,6 +309,12 @@ class MainActivity : ComponentActivity() {
                     nav.navigate(Destinations.DOWNLOADS)
                 }
             }
+        }
+        intent.data?.let { uri ->
+            val tabId = tabsVM.addTab(uri.toString())
+            webManager.createWebView(tabId, false)
+            webManager.showTab(tabId)
+            webManager.loadUrl(tabId, uri.toString())
         }
     }
 
