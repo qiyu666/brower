@@ -107,19 +107,22 @@ class WebViewManager(
     private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
     private val favicons = mutableMapOf<Int, android.graphics.Bitmap>()
 
-    // 流量统计：每页基线 + 会话累计（getTotalVisitedBytes，API 23+）
-    private val pageBaseBytes = mutableMapOf<Int, Long>()
+    // 流量统计：主文档走 HttpURLConnection 拦截计数（转发 Cookie 保持会话），
+    // lastPageBytes=当前页已加载字节，sessionBytes=历史页累计
+    private val lastPageBytes = mutableMapOf<Int, Long>()
     private var sessionBytes: Long = 0
 
-    /** 当前页已加载字节数（主框架资源） */
-    @androidx.annotation.MainThread
-    fun currentPageBytes(tabId: Int): Long {
-        val wv = webViews[tabId] ?: return 0L
-        return wv.totalVisitedBytes - (pageBaseBytes[tabId] ?: 0L)
-    }
+    /** 当前页已加载字节数（主文档） */
+    fun currentPageBytes(tabId: Int): Long = lastPageBytes[tabId] ?: 0L
 
-    /** 会话内累计流量 */
-    fun sessionBytesTotal(): Long = sessionBytes
+    /** 会话内累计流量（含当前未加载完的页） */
+    fun sessionBytesTotal(): Long = sessionBytes + lastPageBytes.values.sum()
+
+    /** 把上一页的字节计入会话累计 */
+    private fun settlePage(tabId: Int) {
+        sessionBytes += lastPageBytes[tabId] ?: 0L
+        lastPageBytes[tabId] = 0L
+    }
 
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
         val config = settingsRepo.config.value
@@ -324,7 +327,7 @@ class WebViewManager(
             @Deprecated("Deprecated in API 23")
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                pageBaseBytes[tabId] = view?.totalVisitedBytes ?: 0L
+                settlePage(tabId)
                 if (favicon != null) favicons[tabId] = favicon
                 incognitoDomains[tabId]?.let { set ->
                     val host = try { android.net.Uri.parse(url)?.host } catch (e: Exception) { null }
@@ -335,13 +338,48 @@ class WebViewManager(
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                view?.let { wv ->
-                    val total = wv.totalVisitedBytes
-                    sessionBytes += total - (pageBaseBytes[tabId] ?: 0L)
-                    pageBaseBytes[tabId] = total
-                }
                 view?.evaluateJavascript(DOWNLOAD_NAME_HOOK_JS, null)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
+            }
+
+            /** 主文档走 HttpURLConnection 加载：精确计数字节；失败时返回 null 让 WebView 正常加载。
+             *  跳过缓存命中（CACHE_ONLY）；转发请求/响应 Cookie 保持登录会话。 */
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): android.webkit.WebResourceResponse? {
+                val isCacheOnly = android.os.Build.VERSION.SDK_INT >= 33 &&
+                    request.cacheHandlingBehavior == WebResourceRequest.CACHE_ONLY
+                if (request.isForMainFrame && !isCacheOnly) {
+                    val scheme = request.url?.scheme
+                    if (scheme == "http" || scheme == "https") {
+                        try {
+                            val url = request.url!!
+                            val conn = url.openConnection() as java.net.HttpURLConnection
+                            conn.instanceFollowRedirects = true
+                            conn.connectTimeout = 15_000
+                            request.requestHeaders?.forEach { (k, v) -> v.forEach { conn.setRequestProperty(k, it) } }
+                            val cm = android.webkit.CookieManager.getInstance()
+                            cm.getCookie(url.toString())?.let { conn.setRequestProperty("Cookie", it) }
+                            conn.connect()
+                            val status = conn.responseCode
+                            val headers = mutableMapOf<String, String>()
+                            conn.headerFields.forEach { (k, v) -> if (k != null) headers[k] = v.last() }
+                            (conn.headerFields["Set-Cookie"] ?: emptyList<String>())
+                                .plus(conn.headerFields["Set-Cookie2"] ?: emptyList())
+                                .forEach { sc -> cm.setCookie(url.toString(), sc) }
+                            cm.flush()
+                            val bytes = conn.inputStream.readBytes()
+                            lastPageBytes[tabId] = bytes.size
+                            return android.webkit.WebResourceResponse(
+                                conn.contentType ?: "text/html",
+                                "UTF-8",
+                                headers,
+                                java.io.ByteArrayInputStream(bytes)
+                            )
+                        } catch (e: Exception) {
+                            return null
+                        }
+                    }
+                }
+                return null
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

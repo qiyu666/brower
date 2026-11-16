@@ -41,16 +41,21 @@ object SearchSuggester {
     private fun parse(body: String, engine: String): List<String> {
         return try {
             val list = when (engine) {
-                "bing" -> JSONArray(body).mapIndexed { i, v -> if (i > 0) v.toString() else null }.filterNotNull()
+                "bing" -> {
+                    val arr = JSONArray(body)
+                    (1 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
+                }
                 "duckduckgo" -> {
                     val obj = JSONObject(body)
-                    (obj.optJSONArray("results") ?: JSONArray()).map { (it as JSONObject).optString("sugg", "") }
-                        .filter { it.isNotBlank() }
+                    val arr = obj.optJSONArray("results") ?: JSONArray()
+                    (0 until arr.length()).map {
+                        (arr.optJSONObject(it) ?: JSONObject()).optString("sugg", "")
+                    }.filter { it.isNotBlank() }
                 }
                 "baidu" -> {
                     val obj = JSONObject(body)
                     val arr = obj.optJSONArray("Q") ?: obj.optJSONArray("q") ?: JSONArray()
-                    (0 until arr.length()).map { arr.optString(it, "") }.filter { it.isNotBlank() }
+                    (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
                 }
                 else -> {
                     val arr = JSONArray(body)

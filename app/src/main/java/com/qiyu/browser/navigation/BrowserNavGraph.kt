@@ -30,7 +30,8 @@ fun BrowserNavHost(
     onOpenFile: (String) -> Unit,
     onOpenWith: (String, String?) -> Unit,
     onShowInFolder: () -> Unit,
-    onOpenUrlInCurrentTab: (String) -> Unit
+    onOpenUrlInCurrentTab: (String) -> Unit,
+    onScanQr: () -> Unit
 ) {
     NavHost(
         navController = navController,

@@ -25,6 +25,12 @@ import java.util.Calendar
 
 private data class DaySection(val label: String, val items: List<HistoryItem>)
 
+/** 懒列表行：天标题 或 条目（LazyColumn 不支持在 items 里嵌套 item/items，扁平化） */
+private interface HistRow {
+    data class Header(val label: String) : HistRow
+    data class Entry(val item: HistoryItem) : HistRow
+}
+
 /** 本地时区当日 0 点的时间戳（分组 key） */
 private fun dayKey(time: Long): Long {
     val c = Calendar.getInstance().apply { timeInMillis = time }
@@ -58,9 +64,10 @@ fun HistoryScreen(
     var searchInput by remember { mutableStateOf("") }
     var showClearDialog by remember { mutableStateOf(false) }
 
-    // 按天分组（items 本身按 visitTime 降序，分组保持顺序）
-    val daySections = remember(items) {
-        items.groupBy { dayKey(it.visitTime) }.map { (key, list) -> DaySection(dayLabel(key), list) }
+    // 按天分组（items 本身按 visitTime 降序，分组保持顺序）+ 扁平行
+    val rows = remember(items) {
+        val sections = items.groupBy { dayKey(it.visitTime) }.map { (key, list) -> DaySection(dayLabel(key), list) }
+        sections.flatMap { s -> listOf<HistRow>(HistRow.Header(s.label)) + s.items.map { HistRow.Entry(it) } }
     }
 
     Scaffold(
@@ -145,19 +152,17 @@ fun HistoryScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(daySections) { section ->
-                        item {
-                            Text(
-                                section.label,
+                    items(rows) { row ->
+                        when (row) {
+                            is HistRow.Header -> Text(
+                                row.label,
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                        }
-                        items(section.items) { item ->
-                            HistoryItemRow(
-                                item = item,
-                                onOpen = { onOpenUrl(item.url) },
-                                onDelete = { viewModel.removeItem(item) }
+                            is HistRow.Entry -> HistoryItemRow(
+                                item = row.item,
+                                onOpen = { onOpenUrl(row.item.url) },
+                                onDelete = { viewModel.removeItem(row.item) }
                             )
                         }
                     }

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -167,10 +168,14 @@ fun AddressBar(
     }
 
     if (showSuggest && suggestRows.isNotEmpty()) {
-        SuggestDropdown(rows = suggestRows) { picked ->
-            onUrlSubmit(picked)
-            showSuggest = false
-        }
+        SuggestDropdown(
+            rows = suggestRows,
+            onPick = { picked ->
+                onUrlSubmit(picked)
+                showSuggest = false
+            },
+            modifier = Modifier.matchParentSize()
+        )
     }
     }
 }
@@ -180,12 +185,11 @@ fun AddressBar(
 @Composable
 private fun SuggestDropdown(
     rows: List<SuggestRow>,
-    onPick: (String) -> Unit
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
-            .matchParentSize()
-            .fillMaxWidth(),
+        modifier = modifier,
         color = MaterialTheme.colorScheme.surface
     ) {
         Column(modifier = Modifier.padding(top = 44.dp, horizontal = 8.dp, bottom = 4.dp)) {
