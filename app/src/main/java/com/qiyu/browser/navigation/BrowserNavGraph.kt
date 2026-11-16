@@ -28,6 +28,8 @@ fun BrowserNavHost(
     webManager: WebViewManager,
     onShare: (String, String) -> Unit,
     onOpenFile: (String) -> Unit,
+    onOpenWith: (String, String?) -> Unit,
+    onShowInFolder: () -> Unit,
     onOpenUrlInCurrentTab: (String) -> Unit
 ) {
     NavHost(
@@ -72,7 +74,9 @@ fun BrowserNavHost(
             DownloadsScreen(
                 viewModel = downloadsVM,
                 onBack = { navController.popBackStack() },
-                onOpenFile = onOpenFile
+                onOpenFile = onOpenFile,
+                onOpenWith = onOpenWith,
+                onShowInFolder = onShowInFolder
             )
         }
         composable(Destinations.SETTINGS) {

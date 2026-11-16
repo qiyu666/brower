@@ -181,6 +181,8 @@ class MainActivity : ComponentActivity() {
                         webManager = webManager,
                         onShare = { url, title -> shareUrl(url, title) },
                         onOpenFile = { path -> openFile(path) },
+                        onOpenWith = { path, mime -> openWithChooser(path, mime) },
+                        onShowInFolder = { showInFolder() },
                         onOpenUrlInCurrentTab = { url ->
                             val activeTab = tabsVM.activeTab.value
                             if (activeTab != null) {
@@ -246,9 +248,53 @@ class MainActivity : ComponentActivity() {
                 )
                 Intent(Intent.ACTION_VIEW, uri)
             }
+            if (intent.data != null) intent.type = WebUtils.mimeTypeForFile(intent.data!!.lastPathSegment ?: "")
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             startActivity(intent)
         } catch (e: Exception) {
+        }
+    }
+
+    /** “用其他应用打开”：chooser 列出所有能打开该 MIME 的应用 */
+    private fun openWithChooser(path: String, mime: String?) {
+        try {
+            val name = path.substringAfterLast('/').ifEmpty { "file" }
+            val intent = if (path.startsWith("content://")) {
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.parse(path), mime)
+                }
+            } else {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, "$packageName.fileprovider", File(path)
+                )
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, mime)
+                }
+            }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val chooser = Intent.createChooser(intent, "打开 $name")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(chooser)
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "没有可打开该文件的应用", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** “显示在文件夹中”：下载目录是 SAF 自定义目录时打开对应文件夹，应用内置目录则提示 */
+    private fun showInFolder() {
+        val dir = settingsVM.config.value.downloadDir
+        if (dir.startsWith("content://")) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.parse(dir), android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(this, "无法打开文件夹", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            android.widget.Toast.makeText(this, "默认下载目录为应用内部目录，请在设置中改为自定义目录后可显示", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 

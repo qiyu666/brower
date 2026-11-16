@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +29,8 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel,
     onBack: () -> Unit,
     onOpenFile: (String) -> Unit,
+    onOpenWith: (String, String?) -> Unit,
+    onShowInFolder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
@@ -114,7 +118,11 @@ fun DownloadsScreen(
                         DownloadItemRow(
                             item = item,
                             onOpen = { item.filePath?.let(onOpenFile) },
-                            onDelete = { viewModel.removeDownload(item) }
+                            onDelete = { viewModel.removeDownload(item) },
+                            onOpenWith = {
+                                item.filePath?.let { onOpenWith(it, WebUtils.mimeTypeForFile(item.fileName)) }
+                            },
+                            onShowInFolder = onShowInFolder
                         )
                     }
                 }
@@ -127,7 +135,9 @@ fun DownloadsScreen(
 private fun DownloadItemRow(
     item: DownloadItem,
     onOpen: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onOpenWith: () -> Unit,
+    onShowInFolder: () -> Unit
 ) {
     val statusText = when (item.status) {
         DownloadStatus.IN_PROGRESS ->
@@ -173,6 +183,23 @@ private fun DownloadItemRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+        val canAct = item.status == DownloadStatus.COMPLETED && item.filePath != null
+        if (canAct) {
+            IconButton(onClick = onOpenWith, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Filled.OpenInNew, "用其他应用打开",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+            IconButton(onClick = onShowInFolder, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Filled.Folder, "显示在文件夹中",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
         }
         IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
             Icon(

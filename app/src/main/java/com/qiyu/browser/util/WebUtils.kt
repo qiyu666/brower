@@ -64,6 +64,35 @@ object WebUtils {
         }
     }
 
+    fun mimeTypeForFile(fileName: String): String {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "bmp" -> "image/bmp"
+            "mp3" -> "audio/mpeg"
+            "m4a" -> "audio/mp4"
+            "flac" -> "audio/flac"
+            "wav" -> "audio/wav"
+            "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            "avi" -> "video/avi"
+            "pdf" -> "application/pdf"
+            "zip" -> "application/zip"
+            "rar" -> "application/x-rar-compressed"
+            "7z" -> "application/x-7z-compressed"
+            "txt", "log" -> "text/plain"
+            "csv" -> "text/csv"
+            "apk" -> "application/vnd.android.package-archive"
+            "doc" -> "application/msword"
+            "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else -> "application/octet-stream"
+        }
+    }
+
     fun formatTime(timestamp: Long): String {
         val now = System.currentTimeMillis()
         val diff = now - timestamp
