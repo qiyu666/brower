@@ -30,7 +30,8 @@ class SitesWidgetProvider : AppWidgetProvider() {
             val site = sites.getOrNull(i)
             if (site != null) {
                 views.setTextViewText(cellId, site.label.ifEmpty { site.url })
-                views.setIntent(cellId, cellPendingIntent(context, appWidgetId, site.url))
+                AppWidgetManager.getInstance(context)
+                    .setAppWidgetViewPendingIntent(appWidgetId, cellId, cellPendingIntent(context, appWidgetId, site.url))
             } else {
                 views.setInt(cellId, "setVisibility", android.view.View.GONE)
             }

@@ -1,5 +1,6 @@
 package com.qiyu.browser.widget
 
+import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
@@ -12,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,11 +41,11 @@ class SitesWidgetConfig : ComponentActivity() {
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            setResult(Intent.RESULT_CANCELED)
+            setResult(Activity.RESULT_CANCELED)
             finish()
             return
         }
-        setResult(AppWidgetManager.RESULT_CANCELED)
+        setResult(Activity.RESULT_CANCELED)
 
         val provider = SitesWidgetProvider()
         setContent {
@@ -51,7 +54,7 @@ class SitesWidgetConfig : ComponentActivity() {
                     onDone = { sites ->
                         SitesWidgetStore.save(this, sites)
                         provider.refresh(this, appWidgetId)
-                        val result = Intent().setResultCode(AppWidgetManager.RESULT_OK)
+                        val result = Intent().setResultCode(Activity.RESULT_OK)
                             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                         setResult(result)
                         finish()

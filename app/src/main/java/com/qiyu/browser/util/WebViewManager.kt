@@ -344,34 +344,39 @@ class WebViewManager(
 
             /** 主文档走 HttpURLConnection 加载：精确计数字节；失败时返回 null 让 WebView 正常加载。
              *  跳过缓存命中（CACHE_ONLY）；转发请求/响应 Cookie 保持登录会话。 */
+            /** 主文档走 HttpURLConnection 加载：精确计数字节；失败时返回 null 让 WebView 正常加载。
+             *  转发请求头与 Cookie（WebView 与 HttpURLConnection 不共享 cookie 库）保持登录会话。 */
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): android.webkit.WebResourceResponse? {
-                val isCacheOnly = android.os.Build.VERSION.SDK_INT >= 33 &&
-                    request.cacheHandlingBehavior == WebResourceRequest.CACHE_ONLY
-                if (request.isForMainFrame && !isCacheOnly) {
+                if (request.isForMainFrame) {
                     val scheme = request.url?.scheme
                     if (scheme == "http" || scheme == "https") {
                         try {
-                            val url = request.url!!
+                            val url = request.url!!.toUrl()
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             conn.instanceFollowRedirects = true
                             conn.connectTimeout = 15_000
-                            request.requestHeaders?.forEach { (k, v) -> v.forEach { conn.setRequestProperty(k, it) } }
+                            request.requestHeaders?.forEach { name, values ->
+                                values.forEach { value -> conn.setRequestProperty(name, value) }
+                            }
                             val cm = android.webkit.CookieManager.getInstance()
                             cm.getCookie(url.toString())?.let { conn.setRequestProperty("Cookie", it) }
                             conn.connect()
-                            val status = conn.responseCode
-                            val headers = mutableMapOf<String, String>()
-                            conn.headerFields.forEach { (k, v) -> if (k != null) headers[k] = v.last() }
-                            (conn.headerFields["Set-Cookie"] ?: emptyList<String>())
-                                .plus(conn.headerFields["Set-Cookie2"] ?: emptyList())
-                                .forEach { sc -> cm.setCookie(url.toString(), sc) }
+                            conn.headerFields.entries.forEach { entry ->
+                                val key = entry.key ?: return@forEach
+                                val vals = entry.value
+                                if (vals.isNotEmpty()) {
+                                    val setCookie = key.lowercase()
+                                    if (setCookie == "set-cookie" || setCookie == "set-cookie2") {
+                                        vals.forEach { sc -> cm.setCookie(url.toString(), sc) }
+                                    }
+                                }
+                            }
                             cm.flush()
                             val bytes = conn.inputStream.readBytes()
-                            lastPageBytes[tabId] = bytes.size
+                            lastPageBytes[tabId] = bytes.size.toLong()
                             return android.webkit.WebResourceResponse(
                                 conn.contentType ?: "text/html",
                                 "UTF-8",
-                                headers,
                                 java.io.ByteArrayInputStream(bytes)
                             )
                         } catch (e: Exception) {
