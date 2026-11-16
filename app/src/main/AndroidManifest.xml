@@ -48,6 +48,22 @@
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
+        <receiver
+            android:name=".widget.SitesWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sites_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.SitesWidgetConfig"
+            android:exported="false"
+            android:theme="@style/Theme.NovaBrowser" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#CC0B1220"
+    android:padding="6dp">
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:columnCount="4"
+        android:rowCount="2"
+        android:useDefaultMargins="true">
+
+        <TextView android:id="@+id/wcell0" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell1" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell2" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell3" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell4" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell5" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell6" style="@style/WidgetCell" />
+        <TextView android:id="@+id/wcell7" style="@style/WidgetCell" />
+    </GridLayout>
+</FrameLayout>
