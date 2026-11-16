@@ -1,5 +1,11 @@
 package com.qiyu.browser.util
 
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -22,6 +28,40 @@ object UpdateChecker {
         val notes: String,
         val directUrl: String
     )
+
+    /**
+     * 把 APK 存到系统公共 Download 目录（用户文件管理器可见）——国内 ROM 拦截自动安装时的兑底：
+     * 用户从文件管理器/快速访问安装。API 29+ 用 MediaStore，26-28 用公共目录（需存储权限，失败返 null）。
+     */
+    fun saveToPublicDownloads(context: Context, source: File, fileName: String): Uri? {
+        return try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/vnd.android.package-archive")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return null
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    source.inputStream().use { it.copyTo(out) }
+                } ?: return null
+                val done = ContentValues()
+                done.put(MediaStore.Downloads.IS_PENDING, 0)
+                context.contentResolver.update(uri, done, null, null)
+                uri
+            } else {
+                @Suppress("DEPRECATION")
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (dir == null) return null
+                source.copyTo(File(dir, fileName), overwrite = true)
+                Uri.fromFile(File(dir, fileName))
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /** 拉取最新 Release（IO 线程调用），无 release / 失败返回 null */
     fun fetchLatest(): UpdateInfo? {

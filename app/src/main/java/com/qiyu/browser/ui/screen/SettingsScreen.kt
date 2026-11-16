@@ -97,14 +97,8 @@ fun SettingsScreen(
     var installPermPending by remember { mutableStateOf(false) }
 
     fun installUpdate(file: File, version: String) {
-        // Android 8+：应用内安装 APK 需先授予「安装未知应用」权限，否则 ACTION_VIEW 会被拦截
-        if (android.os.Build.VERSION.SDK_INT >= 29 &&
-            !context.packageManager.canRequestPackageInstalls()
-        ) {
-            installPermPending = true
-            return
-        }
-        updateState = UpdateCheckState.Idle
+        // 先无条件发一次原生安装请求：国内 ROM（MIUI/EMUI 等）往往只有发起过一次安装后，
+        // 本应用才会出现在「安装未知应用」列表里；未拦截的机型则直接完成安装。
         try {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             context.startActivity(Intent(Intent.ACTION_VIEW).apply {
@@ -112,8 +106,36 @@ fun SettingsScreen(
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         } catch (e: Exception) {
-            Toast.makeText(context, "无法打开安装器：${file.absolutePath}", Toast.LENGTH_LONG).show()
+            // 被拦截/无法启动，继续走授权引导
         }
+        // Android 9+ 未授予安装权限 → 弹「需要安装权限」引导框（去设置页，返回自动重试）
+        if (android.os.Build.VERSION.SDK_INT >= 29 &&
+            !context.packageManager.canRequestPackageInstalls()
+        ) {
+            installPermPending = true
+        } else {
+            updateState = UpdateCheckState.Idle
+        }
+    }
+
+    /** 国内 ROM 兜底：APK 存到公共 Download 目录，用系统文件管理器打开安装 */
+    fun openInFileManager(st: UpdateCheckState.ReadyToInstall) {
+        val name = "qiyu-browser-${st.version}.apk"
+        val uri = UpdateChecker.saveToPublicDownloads(context, st.file, name)
+        if (uri != null) {
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+                Toast.makeText(context, "APK 已保存到 Download 目录，请在文件管理器中安装", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "已保存到 Download 目录（$name），请手动打开文件管理器安装", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(context, "无法保存到 Download 目录，请在系统设置允许“安装未知应用”后重试安装", Toast.LENGTH_LONG).show()
+        }
+        updateState = UpdateCheckState.Idle
     }
 
     // 从「安装未知应用」设置页返回后：若还在等待安装，自动重试（此时权限已授予）
@@ -132,7 +154,7 @@ fun SettingsScreen(
             onDismissRequest = { installPermPending = false },
             title = { Text("需要安装权限") },
             text = {
-                Text("系统要求先允许本应用“安装未知应用”。去设置页打开开关后，返回会自动继续安装。")
+                Text("系统要求先允许本应用“安装未知应用”。刚已发起一次安装请求，本应用的开关此时应已出现在设置页中。授权后返回会自动继续安装；也可直接用文件管理器安装。")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -217,10 +239,21 @@ fun SettingsScreen(
         )
         is UpdateCheckState.ReadyToInstall -> AlertDialog(
             onDismissRequest = { updateState = UpdateCheckState.Idle },
-            title = { Text("下载完成") },
-            text = { Text("现在安装 v${st.version}？") },
+            title = { Text("v${st.version} 下载完成") },
+            text = {
+                Column {
+                    Text("现在安装？")
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { openInFileManager(st) }) { Text("用文件管理器安装") }
+                    Text(
+                        "若安装被系统拦截：APK 会同时存到 Download 目录，可用文件管理器/快速访问安装",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            },
             confirmButton = {
-                TextButton(onClick = { installUpdate(st.file, st.version) }) { Text("安装") }
+                TextButton(onClick = { installUpdate(st.file, st.version) }) { Text("立即安装") }
             },
             dismissButton = {
                 TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("取消") }
