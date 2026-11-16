@@ -94,7 +94,26 @@ fun SettingsScreen(
         }
     }
 
+    var installPermPending by remember { mutableStateOf(false) }
+
+    // 从「安装未知应用」设置页返回后：若还在等待安装，自动重试（此时权限已授予）
+    val installPermLauncher = rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (updateState is UpdateCheckState.ReadyToInstall) {
+            val st = updateState as UpdateCheckState.ReadyToInstall
+            installUpdate(st.file, st.version)
+        }
+    }
+
     fun installUpdate(file: File, version: String) {
+        // Android 8+：应用内安装 APK 需先授予「安装未知应用」权限，否则 ACTION_VIEW 会被拦截
+        if (android.os.Build.VERSION.SDK_INT >= 29 &&
+            !context.packageManager.canRequestPackageInstalls()
+        ) {
+            installPermPending = true
+            return
+        }
         updateState = UpdateCheckState.Idle
         try {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
@@ -105,6 +124,33 @@ fun SettingsScreen(
         } catch (e: Exception) {
             Toast.makeText(context, "无法打开安装器：${file.absolutePath}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    // 申请「安装未知应用」权限引导（设置页跳出去授权，返回后自动重试安装）
+    if (installPermPending && updateState is UpdateCheckState.ReadyToInstall) {
+        AlertDialog(
+            onDismissRequest = { installPermPending = false },
+            title = { Text("需要安装权限") },
+            text = {
+                Text("系统要求先允许本应用“安装未知应用”。去设置页打开开关后，返回会自动继续安装。")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    try {
+                        installPermLauncher.launch(
+                            Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:${context.packageName}"))
+                        )
+                    } catch (e: Exception) {
+                        installPermPending = false
+                        updateState = UpdateCheckState.Failed("无法打开安装权限设置页，请手动安装已下载的 APK")
+                    }
+                }) { Text("去设置") }
+            },
+            dismissButton = {
+                TextButton(onClick = { installPermPending = false }) { Text("稍后") }
+            }
+        )
     }
 
     // 更新检查弹窗
