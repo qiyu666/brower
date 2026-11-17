@@ -241,6 +241,13 @@ class WebViewManager(
             }
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
+            // 隐藏内建缩放胶囊（挡页面且丑），缩放统一走菜单「缩放」档位；双指缩放仍可用。
+            // 反射调用：当前编译环境解析不到 setZoomControlsEnabled
+            try {
+                WebSettings::class.java
+                    .getMethod("setZoomControlsEnabled", java.lang.Boolean::class.javaPrimitiveType)
+                    .invoke(settings, false)
+            } catch (e: Exception) {}
             setDownloadListener { url, _, contentDisposition, mimeType, _ ->
                 val cdName = contentDisposition?.let { cd ->
                     val raw = when {

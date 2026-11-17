@@ -343,39 +343,63 @@ fun BrowserScreen(
         )
     }
 
-    // 缩放档位对话框（双指缩放已默认开启，这是快捷档位）
+    // 缩放档位对话框：内建缩放胶囊已隐藏，统一从这里选档（双指缩放仍可用）
     if (showZoomDialog && activeTab != null) {
-        val current = webManager.currentZoom(activeTab!!.id)
+        var zoomPct by remember { mutableStateOf(webManager.currentZoom(activeTab!!.id)) }
         AlertDialog(
             onDismissRequest = { showZoomDialog = false },
-            title = { Text("缩放") },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.ZoomIn,
+                        null,
+                        modifier = Modifier.size(20.dp).padding(end = 8.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("缩放")
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "${zoomPct}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
             text = {
-                Column {
-                    listOf(50, 75, 100, 125, 150, 200).forEach { pct ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
+                Column(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(50, 75, 100).forEach { pct ->
+                            FilterChip(
+                                selected = zoomPct == pct,
+                                onClick = {
                                     webManager.setZoom(activeTab!!.id, pct)
-                                    showZoomDialog = false
-                                }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (current == pct) Icons.Filled.Star else Icons.Filled.Close,
-                                null,
-                                modifier = Modifier.size(18.dp).padding(end = 10.dp),
-                                tint = if (current == pct) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
-                            )
-                            Text(
-                                "${pct}%",
-                                style = MaterialTheme.typography.bodyMedium,
+                                    zoomPct = pct
+                                },
+                                label = { Text("${pct}%") },
                                 modifier = Modifier.weight(1f)
                             )
                         }
                     }
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(125, 150, 200).forEach { pct ->
+                            FilterChip(
+                                selected = zoomPct == pct,
+                                onClick = {
+                                    webManager.setZoom(activeTab!!.id, pct)
+                                    zoomPct = pct
+                                },
+                                label = { Text("${pct}%") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "双指缩放仍可在页面上直接用；档位会跟随当前标签页",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
                 }
             },
             confirmButton = {
