@@ -11,7 +11,6 @@ import com.qiyu.browser.data.repository.HistoryRepository
 import com.qiyu.browser.data.repository.SettingsRepository
 import com.qiyu.browser.util.AppStrings
 import java.io.File
-import java.io.PrintWriter
 
 class NovaBrowserApp : Application() {
 
@@ -42,7 +41,7 @@ class NovaBrowserApp : Application() {
             try {
                 val sb = StringBuilder("=== 崩溃日志 ===\n")
                 sb.append("异常：").append(e).append('\n')
-                e.printStackTrace(PrintWriter(sb))
+                sb.append(e.stackTraceToString()).append('\n')
                 sb.append("\n设备：").append(Build.MANUFACTURER).append(' ')
                     .append(Build.MODEL).append('\n')
                 sb.append("Android：API ").append(Build.VERSION.SDK_INT)
