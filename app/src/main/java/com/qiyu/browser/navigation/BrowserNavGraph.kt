@@ -15,6 +15,7 @@ object Destinations {
     const val HISTORY = "history"
     const val DOWNLOADS = "downloads"
     const val SETTINGS = "settings"
+    const val DEV = "dev"
 }
 
 @Composable
@@ -52,7 +53,8 @@ fun BrowserNavHost(
                 onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) },
                 onShare = onShare,
                 onScanQr = onScanQr,
-                onClearData = onClearData
+                onClearData = onClearData,
+                onDev = { navController.navigate(Destinations.DEV) }
             )
         }
         composable(Destinations.BOOKMARKS) {
@@ -88,6 +90,12 @@ fun BrowserNavHost(
         composable(Destinations.SETTINGS) {
             SettingsScreen(
                 viewModel = settingsVM,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Destinations.DEV) {
+            DevScreen(
+                webManager = webManager,
                 onBack = { navController.popBackStack() }
             )
         }

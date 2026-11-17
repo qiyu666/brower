@@ -15,6 +15,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.qiyu.browser.data.repository.SettingsRepository
 import com.qiyu.browser.model.BrowserConfig
 import kotlin.math.roundToInt
+import kotlin.volatile
 
 interface WebViewListener {
     fun onPageStarted(tabId: Int, url: String)
@@ -123,6 +124,76 @@ class WebViewManager(
     private fun settlePage(tabId: Int) {
         sessionBytes += lastPageBytes[tabId] ?: 0L
         lastPageBytes[tabId] = 0L
+    }
+
+    // ---- 开发者面板：网络记录 / 控制台 / 远程调试 ----
+
+    data class DevNetEntry(
+        val time: String,
+        val main: Boolean,
+        val url: String,
+        val status: String,
+        val size: String
+    )
+
+    data class DevConsoleEntry(
+        val level: String,
+        val message: String,
+        val source: String
+    )
+
+    private val netLog = ArrayDeque<DevNetEntry>()
+    private val consoleLog = ArrayDeque<DevConsoleEntry>()
+    @Volatile var remoteDebugging = false
+        private set
+
+    private fun nowHms(): String =
+        java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+
+    private fun fmtBytes(n: Long): String = when {
+        n >= 1048576 -> "%.1f MB".format(n / 1048576.0)
+        n >= 1024 -> "%.1f KB".format(n / 1024.0)
+        else -> "$n B"
+    }
+
+    fun addDevNet(main: Boolean, url: String, status: String, sizeBytes: Long? = null) {
+        synchronized(netLog) {
+            netLog.addLast(
+                DevNetEntry(nowHms(), main, url, status, sizeBytes?.let { fmtBytes(it) } ?: "")
+            )
+            while (netLog.size > 300) netLog.removeFirst()
+        }
+    }
+
+    /** 子资源收到 HTTP 错误：把最近一条同 url 且未完成（status="–"）的记录改为错误码 */
+    fun failDevNet(url: String, code: Int) {
+        synchronized(netLog) {
+            val idx = (netLog.size - 1) downTo 0
+                .firstOrNull { netLog[it].url == url && netLog[it].status == "–" }
+            if (idx != null) {
+                netLog[idx] = netLog[idx].copy(status = code.toString())
+            }
+        }
+    }
+
+    fun addDevConsole(level: String, message: String, source: String) {
+        synchronized(consoleLog) {
+            consoleLog.addLast(DevConsoleEntry(level, message, source))
+            while (consoleLog.size > 300) consoleLog.removeFirst()
+        }
+    }
+
+    fun devNetLog(): List<DevNetEntry> = synchronized(netLog) { netLog.toList() }
+    fun devConsoleLog(): List<DevConsoleEntry> = synchronized(consoleLog) { consoleLog.toList() }
+    fun clearDevLogs() {
+        synchronized(netLog) { netLog.clear() }
+        synchronized(consoleLog) { consoleLog.clear() }
+    }
+
+    /** 远程调试开关：开启后电脑 Chrome 打开 chrome://inspect 可连上本应用 WebView */
+    fun setRemoteDebugging(enabled: Boolean) {
+        remoteDebugging = enabled
+        try { WebSettings.setWebContentsDebuggingEnabled(enabled) } catch (e: Exception) {}
     }
 
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
@@ -407,17 +478,31 @@ class WebViewManager(
                             cm.flush()
                             val bytes = conn.inputStream.readBytes()
                             lastPageBytes[tabId] = bytes.size.toLong()
+                            addDevNet(true, url.toString(), conn.responseCode.toString(), bytes.size.toLong())
                             return android.webkit.WebResourceResponse(
                                 conn.contentType ?: "text/html",
                                 "UTF-8",
                                 java.io.ByteArrayInputStream(bytes)
                             )
                         } catch (e: Exception) {
+                            addDevNet(true, request.url?.toString() ?: "", "error")
                             return null
                         }
+                    } else {
+                        // file/about 等非 http 主文档
+                        addDevNet(true, request.url?.toString() ?: "", "–")
                     }
+                } else {
+                    // 子资源：只记请求，后续错误码由 onReceivedHttpError 补上
+                    addDevNet(false, request.url?.toString() ?: "", "–")
                 }
                 return null
+            }
+
+            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: android.webkit.WebResourceResponse) {
+                request?.let { req ->
+                    failDevNet(req.url?.toString() ?: "", errorResponse.statusCode)
+                }
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -460,6 +545,19 @@ class WebViewManager(
     }
 
     private fun createWebChromeClient(tabId: Int): WebChromeClient {
-        return WebChromeClient()
+        return object : WebChromeClient() {
+            @Deprecated("Deprecated in Java")
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
+                val level = when (consoleMessage.messageLevel()) {
+                    0 -> "debug"
+                    1 -> "log"
+                    2 -> "info"
+                    3 -> "warn"
+                    else -> "error"
+                }
+                addDevConsole(level, consoleMessage.message(), consoleMessage.sourceId() ?: "")
+                return true
+            }
+        }
     }
 }
