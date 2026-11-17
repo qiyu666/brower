@@ -220,7 +220,9 @@ class WebViewManager(
                 setSupportZoom(true)
                 builtInZoomControls = true
                 useWideViewPort = true
-                loadWithOverviewMode = true
+                // 关闭 overview 模式：它会把页面整体拟合到屏幕宽度，视觉上覆盖/重置缩放；
+                // 改成 Chrome 式“贴合宽度 + 缩放层”，菜单滑杆的 zoom 才可见
+                loadWithOverviewMode = false
                 textZoom = config.fontSize
                 cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
                 @Suppress("DEPRECATION")
@@ -410,22 +412,41 @@ class WebViewManager(
         webViews[tabId]?.loadUrl(url)
     }
 
-    /** 页面缩放（双指缩放默认开启，此为快捷档位）。
-     *  反射调 setZoomScale/getZoomScale：当前编译环境对这两个方法符号解析有缺陷。 */
-    fun setZoom(tabId: Int, scalePercent: Int) {
+    /** 每个标签页上次设置的缩放档位（50%~200%） */
+    private val zoomFactor = HashMap<Int, Float>()
+
+    /** 应用缩放：WebSettings.setZoomScale（反射：环境对 WebView 级同名符号解析有缺陷）
+     *  + JS style.zoom 双保险（引擎不支持时静默忽略）；onPageFinished 时重新应用 */
+    private fun applyZoom(tabId: Int) {
+        val factor = zoomFactor[tabId] ?: return
+        val wv = webViews[tabId] ?: return
         try {
-            val wv = webViews[tabId] ?: return
-            val m = android.webkit.WebView::class.java.getMethod("setZoomScale", java.lang.Float::class.javaPrimitiveType)
-            m.invoke(wv, (scalePercent / 100).toFloat())
+            android.webkit.WebSettings::class.java
+                .getMethod("setZoomScale", java.lang.Float::class.javaPrimitiveType, java.lang.Boolean::class.javaPrimitiveType)
+                .invoke(wv.settings, factor, false)
+        } catch (e: Exception) {}
+        try {
+            wv.evaluateJavascript(
+                "(function(){ try { var f = $factor; document.documentElement.style.zoom = f; if (document.body) document.body.style.zoom = f; } catch(e){} })()",
+                null
+            )
         } catch (e: Exception) {}
     }
 
-    /** 当前缩放百分比（取整到 10 的倍数） */
+    /** 页面缩放（菜单滑杆 / 双指缩放） */
+    fun setZoom(tabId: Int, scalePercent: Int) {
+        val factor = (scalePercent / 100).toFloat().coerceIn(0.5f, 2.0f)
+        zoomFactor[tabId] = factor
+        applyZoom(tabId)
+    }
+
+    /** 当前缩放百分比（取整到 10 的倍数）：优先本地记录，回退反射读 WebSettings.getZoomScale */
     fun currentZoom(tabId: Int): Int {
+        zoomFactor[tabId]?.let { f -> return ((f * 100).roundToInt() / 10) * 10 }
         return try {
             val wv = webViews[tabId] ?: return 100
-            val m = android.webkit.WebView::class.java.getMethod("getZoomScale")
-            val s = m.invoke(wv) as Float
+            val m = android.webkit.WebSettings::class.java.getMethod("getZoomScale")
+            val s = m.invoke(wv.settings) as Float
             ((s * 100).roundToInt() / 10) * 10
         } catch (e: Exception) {
             100
@@ -458,6 +479,7 @@ class WebViewManager(
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 view?.evaluateJavascript(DOWNLOAD_NAME_HOOK_JS, null)
+                applyZoom(tabId)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
             }
 
