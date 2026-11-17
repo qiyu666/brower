@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Code
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -86,7 +87,6 @@ fun BrowserScreen(
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showTrafficDialog by remember { mutableStateOf(false) }
-    var showZoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
     var clearSelHistory by remember { mutableStateOf(true) }
     var clearSelCookies by remember { mutableStateOf(true) }
@@ -343,71 +343,6 @@ fun BrowserScreen(
         )
     }
 
-    // 缩放档位对话框：内建缩放胶囊已隐藏，统一从这里选档（双指缩放仍可用）
-    if (showZoomDialog && activeTab != null) {
-        var zoomPct by remember { mutableStateOf(webManager.currentZoom(activeTab!!.id)) }
-        AlertDialog(
-            onDismissRequest = { showZoomDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.ZoomIn,
-                        null,
-                        modifier = Modifier.size(20.dp).padding(end = 8.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text("缩放")
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        "${zoomPct}%",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            text = {
-                Column(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(50, 75, 100).forEach { pct ->
-                            FilterChip(
-                                selected = zoomPct == pct,
-                                onClick = {
-                                    webManager.setZoom(activeTab!!.id, pct)
-                                    zoomPct = pct
-                                },
-                                label = { Text("${pct}%") },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(125, 150, 200).forEach { pct ->
-                            FilterChip(
-                                selected = zoomPct == pct,
-                                onClick = {
-                                    webManager.setZoom(activeTab!!.id, pct)
-                                    zoomPct = pct
-                                },
-                                label = { Text("${pct}%") },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "双指缩放仍可在页面上直接用；档位会跟随当前标签页",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showZoomDialog = false }) { Text("完成") }
-            }
-        )
-    }
-
     // 一键清理对话框：历史 / Cookie 与站点数据 / 缓存
     if (showClearDataDialog) {
         AlertDialog(
@@ -522,10 +457,6 @@ fun BrowserScreen(
                         showMenu = false
                         onScanQr()
                     },
-                    onZoom = {
-                        showMenu = false
-                        showZoomDialog = true
-                    },
                     onClearData = {
                         showMenu = false
                         showClearDataDialog = true
@@ -533,7 +464,9 @@ fun BrowserScreen(
                     onDev = {
                         showMenu = false
                         onDev()
-                    }
+                    },
+                    webManager = webManager,
+                    activeTabId = activeTab?.id
                 )
             }
         }
@@ -667,9 +600,10 @@ private fun OverflowMenuSheet(
     onShare: () -> Unit,
     onTraffic: () -> Unit,
     onScanQr: () -> Unit,
-    onZoom: () -> Unit,
     onClearData: () -> Unit,
-    onDev: () -> Unit
+    onDev: () -> Unit,
+    webManager: WebViewManager,
+    activeTabId: Int?
 ) {
     Column(
         modifier = Modifier
@@ -712,8 +646,46 @@ private fun OverflowMenuSheet(
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
             GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
-            GridMenuItem(Icons.Filled.ZoomIn, "缩放", modifier = Modifier.weight(1f), onClick = onZoom)
             GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
+        }
+        Spacer(Modifier.height(12.dp))
+        // 缩放滑杆：打开菜单即可直接拖动改变当前页面缩放（50%~200%）
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            var zoomPct by remember { mutableStateOf(activeTabId?.let { webManager.currentZoom(it) } ?: 100) }
+            Icon(
+                Icons.Filled.ZoomIn,
+                null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(12.dp))
+            Slider(
+                value = (zoomPct - 50) / 150f,
+                onValueChange = { fraction ->
+                    val pct = (50 + fraction * 150).roundToInt()
+                    zoomPct = pct
+                    activeTabId?.let { tabId -> webManager.setZoom(tabId, pct) }
+                },
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${zoomPct}%",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.width(52.dp)
+            )
         }
     }
 }
