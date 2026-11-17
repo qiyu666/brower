@@ -681,7 +681,7 @@ private fun OverflowMenuSheet(
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             GridMenuItem(Icons.Filled.Face, "私密模式", modifier = Modifier.weight(1f), onClick = onIncognito)
             GridMenuItem(Icons.Filled.Settings, "设置", modifier = Modifier.weight(1f), onClick = onSettings)
-            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
+            GridMenuItem(Icons.Filled.Code, "开发者", modifier = Modifier.weight(1f), onClick = onDev)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
@@ -692,7 +692,7 @@ private fun OverflowMenuSheet(
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Code, "开发者", modifier = Modifier.weight(1f), onClick = onDev)
+            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
         }
     }
 }
