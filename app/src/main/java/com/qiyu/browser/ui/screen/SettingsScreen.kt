@@ -96,6 +96,13 @@ fun SettingsScreen(
 
     var installPermPending by remember { mutableStateOf(false) }
 
+    /** 查安装权限：未声明 REQUEST_INSTALL_PACKAGES 时系统会抛 SecurityException，必须包一层 */
+    fun canInstallPackages(): Boolean = try {
+        context.packageManager.canRequestPackageInstalls()
+    } catch (e: Exception) {
+        false
+    }
+
     fun installUpdate(file: File, version: String) {
         // 先无条件发一次原生安装请求：国内 ROM（MIUI/EMUI 等）往往只有发起过一次安装后，
         // 本应用才会出现在「安装未知应用」列表里；未拦截的机型则直接完成安装。
@@ -111,9 +118,7 @@ fun SettingsScreen(
             Toast.makeText(context, "发起安装失败（${e.message}），可改用“用文件管理器安装”", Toast.LENGTH_LONG).show()
         }
         // Android 9+ 未授予安装权限 → 弹「需要安装权限」引导框（保持对话框，保留文件管理器兑底入口）
-        if (android.os.Build.VERSION.SDK_INT >= 29 &&
-            !context.packageManager.canRequestPackageInstalls()
-        ) {
+        if (android.os.Build.VERSION.SDK_INT >= 29 && !canInstallPackages()) {
             installPermPending = true
         } else if (launchOk) {
             updateState = UpdateCheckState.Idle
@@ -147,7 +152,7 @@ fun SettingsScreen(
         try {
             if (updateState is UpdateCheckState.ReadyToInstall) {
                 val st = updateState as UpdateCheckState.ReadyToInstall
-                if (context.packageManager.canRequestPackageInstalls()) {
+                if (canInstallPackages()) {
                     installUpdate(st.file, st.version)
                 } else {
                     Toast.makeText(context, "未检测到安装权限，可关闭对话框改用“用文件管理器安装”", Toast.LENGTH_LONG).show()
