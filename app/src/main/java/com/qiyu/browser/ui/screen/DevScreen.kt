@@ -23,7 +23,6 @@ import com.qiyu.browser.util.WebViewManager
  * - 控制台：WebChromeClient.onConsoleMessage
  * - 远程调试开关：电脑 Chrome 打开 chrome://inspect 连上本应用 WebView 用完整 DevTools
  */
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun DevScreen(
     webManager: WebViewManager,
@@ -89,7 +88,7 @@ fun DevScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("远程调试", style = MaterialTheme.typography.body1)
+                    Text("远程调试", style = MaterialTheme.typography.bodyLarge)
                     Text(
                         "开启后电脑 Chrome 打开 chrome://inspect 可连上本应用 WebView",
                         style = MaterialTheme.typography.labelSmall,
@@ -137,7 +136,7 @@ private fun EmptyHint(text: String) {
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.body1,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         )
     }
@@ -162,7 +161,7 @@ private fun NetRow(entry: WebViewManager.DevNetEntry) {
     ) {
         Text(
             entry.status,
-            style = MaterialTheme.typography.body1,
+            style = MaterialTheme.typography.bodyLarge,
             color = statusColor(entry.status),
             modifier = Modifier.width(48.dp),
             maxLines = 1
@@ -170,7 +169,7 @@ private fun NetRow(entry: WebViewManager.DevNetEntry) {
         Column(Modifier.weight(1f)) {
             Text(
                 entry.url,
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -223,7 +222,7 @@ private fun ConsoleRow(entry: WebViewManager.DevConsoleEntry) {
         Column(Modifier.weight(1f)) {
             Text(
                 entry.message,
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
                 maxLines = 6

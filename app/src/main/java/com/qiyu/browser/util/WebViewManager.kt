@@ -15,7 +15,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.qiyu.browser.data.repository.SettingsRepository
 import com.qiyu.browser.model.BrowserConfig
 import kotlin.math.roundToInt
-import kotlin.volatile
 
 interface WebViewListener {
     fun onPageStarted(tabId: Int, url: String)
@@ -144,23 +143,23 @@ class WebViewManager(
 
     private val netLog = ArrayDeque<DevNetEntry>()
     private val consoleLog = ArrayDeque<DevConsoleEntry>()
-    @Volatile var remoteDebugging = false
+    var remoteDebugging = false
         private set
 
     private fun nowHms(): String =
         java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
 
     private fun fmtBytes(n: Long): String = when {
-        n >= 1048576 -> "%.1f MB".format(n / 1048576.0)
-        n >= 1024 -> "%.1f KB".format(n / 1024.0)
+        n >= 1048576 -> ("%.1f MB").format(n / 1048576.0)
+        n >= 1024 -> ("%.1f KB").format(n / 1024.0)
         else -> "$n B"
     }
 
     fun addDevNet(main: Boolean, url: String, status: String, sizeBytes: Long? = null) {
+        val sizeStr = if (sizeBytes == null) "" else fmtBytes(sizeBytes)
+        val entry = DevNetEntry(nowHms(), main, url, status, sizeStr)
         synchronized(netLog) {
-            netLog.addLast(
-                DevNetEntry(nowHms(), main, url, status, sizeBytes?.let { fmtBytes(it) } ?: "")
-            )
+            netLog.addLast(entry)
             while (netLog.size > 300) netLog.removeFirst()
         }
     }
@@ -168,17 +167,22 @@ class WebViewManager(
     /** 子资源收到 HTTP 错误：把最近一条同 url 且未完成（status="–"）的记录改为错误码 */
     fun failDevNet(url: String, code: Int) {
         synchronized(netLog) {
-            val idx = (netLog.size - 1) downTo 0
-                .firstOrNull { netLog[it].url == url && netLog[it].status == "–" }
-            if (idx != null) {
-                netLog[idx] = netLog[idx].copy(status = code.toString())
+            var i = netLog.size - 1
+            while (i >= 0) {
+                val e = netLog[i]
+                if (e.url == url && e.status == "–") {
+                    netLog[i] = e.copy(status = code.toString())
+                    break
+                }
+                i--
             }
         }
     }
 
     fun addDevConsole(level: String, message: String, source: String) {
+        val entry = DevConsoleEntry(level, message, source)
         synchronized(consoleLog) {
-            consoleLog.addLast(DevConsoleEntry(level, message, source))
+            consoleLog.addLast(entry)
             while (consoleLog.size > 300) consoleLog.removeFirst()
         }
     }
@@ -190,10 +194,15 @@ class WebViewManager(
         synchronized(consoleLog) { consoleLog.clear() }
     }
 
-    /** 远程调试开关：开启后电脑 Chrome 打开 chrome://inspect 可连上本应用 WebView */
+    /** 远程调试开关：开启后电脑 Chrome 打开 chrome://inspect 可连上本应用 WebView
+     *  反射调用：当前编译环境解析不到该静态方法 */
     fun setRemoteDebugging(enabled: Boolean) {
         remoteDebugging = enabled
-        try { WebSettings.setWebContentsDebuggingEnabled(enabled) } catch (e: Exception) {}
+        try {
+            WebSettings::class.java
+                .getMethod("setWebContentsDebuggingEnabled", java.lang.Boolean::class.javaPrimitiveType)
+                .invoke(null, enabled)
+        } catch (e: Exception) {}
     }
 
     fun createWebView(tabId: Int, incognito: Boolean): WebView {
@@ -548,7 +557,8 @@ class WebViewManager(
         return object : WebChromeClient() {
             @Deprecated("Deprecated in Java")
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
-                val level = when (consoleMessage.messageLevel()) {
+                val lvl = consoleMessage.messageLevel()
+                val level = when (lvl.ordinal) {
                     0 -> "debug"
                     1 -> "log"
                     2 -> "info"
