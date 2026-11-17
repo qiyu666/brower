@@ -119,7 +119,14 @@ fun SettingsScreen(
         }
         // Android 9+ 未授予安装权限 → 弹「需要安装权限」引导框（保持对话框，保留文件管理器兑底入口）
         if (android.os.Build.VERSION.SDK_INT >= 29 && !canInstallPackages()) {
-            installPermPending = true
+            // 小米/红米 ROM：安装请求被系统路由到应用包安装器（com.miui.packageinstaller），
+            // 用户在系统安装界面点「继续」即可完成安装，无需去设置授予「安装未知应用」权限
+            val xiaomiRom = android.os.Build.MANUFACTURER.lowercase() in listOf("xiaomi", "redmi", "poco", "mi")
+            if (launchOk && xiaomiRom) {
+                Toast.makeText(context, "安装请求已交给系统安装器，请在系统安装界面点“继续”", Toast.LENGTH_LONG).show()
+            } else {
+                installPermPending = true
+            }
         } else if (launchOk) {
             updateState = UpdateCheckState.Idle
         }
