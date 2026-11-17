@@ -50,7 +50,8 @@ class NovaBrowserApp : Application() {
                 sb.append("应用：Qiyu Browser 1.5 (versionCode 6)\n")
                 val log = sb.toString()
                 try {
-                    File(getExternalFilesDir(null), "crash.log").writeText(log)
+                    java.io.FileOutputStream(File(getExternalFilesDir(null), "crash.log"))
+                        .use { it.write(log.toByteArray()) }
                 } catch (ignored: Exception) {
                 }
                 startActivity(Intent(this, MainActivity::class.java).apply {
