@@ -99,21 +99,23 @@ fun SettingsScreen(
     fun installUpdate(file: File, version: String) {
         // 先无条件发一次原生安装请求：国内 ROM（MIUI/EMUI 等）往往只有发起过一次安装后，
         // 本应用才会出现在「安装未知应用」列表里；未拦截的机型则直接完成安装。
+        var launchOk = false
         try {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             })
+            launchOk = true
         } catch (e: Exception) {
-            // 被拦截/无法启动，继续走授权引导
+            Toast.makeText(context, "发起安装失败（${e.message}），可改用“用文件管理器安装”", Toast.LENGTH_LONG).show()
         }
-        // Android 9+ 未授予安装权限 → 弹「需要安装权限」引导框（去设置页，返回自动重试）
+        // Android 9+ 未授予安装权限 → 弹「需要安装权限」引导框（保持对话框，保留文件管理器兑底入口）
         if (android.os.Build.VERSION.SDK_INT >= 29 &&
             !context.packageManager.canRequestPackageInstalls()
         ) {
             installPermPending = true
-        } else {
+        } else if (launchOk) {
             updateState = UpdateCheckState.Idle
         }
     }
@@ -138,13 +140,21 @@ fun SettingsScreen(
         updateState = UpdateCheckState.Idle
     }
 
-    // 从「安装未知应用」设置页返回后：若还在等待安装，自动重试（此时权限已授予）
+    // 从「安装未知应用」设置页返回：已授权则直接安装；未授权不再自动重试（降低被 ROM 拦截时的崩溃面），提示用户
     val installPermLauncher = rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) {
-        if (updateState is UpdateCheckState.ReadyToInstall) {
-            val st = updateState as UpdateCheckState.ReadyToInstall
-            installUpdate(st.file, st.version)
+        try {
+            if (updateState is UpdateCheckState.ReadyToInstall) {
+                val st = updateState as UpdateCheckState.ReadyToInstall
+                if (context.packageManager.canRequestPackageInstalls()) {
+                    installUpdate(st.file, st.version)
+                } else {
+                    Toast.makeText(context, "未检测到安装权限，可关闭对话框改用“用文件管理器安装”", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            // 任何异常都不崩：用户仍可手动重试或走文件管理器兑底
         }
     }
 
@@ -154,18 +164,24 @@ fun SettingsScreen(
             onDismissRequest = { installPermPending = false },
             title = { Text("需要安装权限") },
             text = {
-                Text("系统要求先允许本应用“安装未知应用”。刚已发起一次安装请求，本应用的开关此时应已出现在设置页中。授权后返回会自动继续安装；也可直接用文件管理器安装。")
+                Text("系统要求先允许本应用“安装未知应用”。如设置页里找不到开关或被拦截，可直接点“稍后”，在“下载完成”对话框里改用“用文件管理器安装”。")
             },
             confirmButton = {
                 TextButton(onClick = {
+                    val settingsIntent = Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}")
+                    )
                     try {
-                        installPermLauncher.launch(
-                            Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                Uri.parse("package:${context.packageName}"))
-                        )
+                        installPermLauncher.launch(settingsIntent)
                     } catch (e: Exception) {
-                        installPermPending = false
-                        updateState = UpdateCheckState.Failed("无法打开安装权限设置页，请手动安装已下载的 APK")
+                        // 部分 ROM 上 startActivityForResult 会异常 → 退化为普通 startActivity
+                        try {
+                            context.startActivity(settingsIntent)
+                        } catch (e2: Exception) {
+                            installPermPending = false
+                            Toast.makeText(context, "无法打开安装权限设置页，请手动安装 Download 目录里的 APK", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }) { Text("去设置") }
             },

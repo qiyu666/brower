@@ -53,6 +53,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 上次进程崩溃时带过来的日志：复制到剪贴板，用户粘贴给开发者定位
+        val crashLog = intent?.getStringExtra("crash_log")
+        if (crashLog != null) {
+            intent.removeExtra("crash_log")
+            val cm = getSystemService(android.content.ClipboardManager::class.java)
+                as? android.content.ClipboardManager
+            if (cm != null) {
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", crashLog))
+            }
+            Toast.makeText(this, "刚才闪退了！崩溃日志已复制到剪贴板，请粘贴发给开发者", Toast.LENGTH_LONG).show()
+        }
+
         val app = application as NovaBrowserApp
         val vmProvider = ViewModelProvider(this)
 
