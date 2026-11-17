@@ -682,6 +682,7 @@ private fun OverflowMenuSheet(
             GridMenuItem(Icons.Filled.Face, "私密模式", modifier = Modifier.weight(1f), onClick = onIncognito)
             GridMenuItem(Icons.Filled.Settings, "设置", modifier = Modifier.weight(1f), onClick = onSettings)
             GridMenuItem(Icons.Filled.Code, "开发者", modifier = Modifier.weight(1f), onClick = onDev)
+            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
@@ -689,10 +690,6 @@ private fun OverflowMenuSheet(
             GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
             GridMenuItem(Icons.Filled.ZoomIn, "缩放", modifier = Modifier.weight(1f), onClick = onZoom)
             GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
         }
     }
 }
