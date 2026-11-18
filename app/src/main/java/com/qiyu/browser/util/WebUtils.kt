@@ -63,6 +63,16 @@ object WebUtils {
         }
     }
 
+    /** 清洗文件名中的非法字符（安卓/Linux 文件名不能含 / \ : * ? " < > | 等），
+     *  否则如歌名「24/7(氛围)」会被拼进目录路径导致下载 ENOENT */
+    fun sanitizeFileName(raw: String): String {
+        var n = raw.replace('/', '_').replace('\\', '_')
+            .replace(':', '_').replace('*', '_').replace('?', '_')
+            .replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
+            .trim { c -> c < ' ' }
+        return n.takeIf { it.isNotEmpty() } ?: "download"
+    }
+
     fun formatFileSize(bytes: Long): String {
         return when {
             bytes < 1024 -> "$bytes B"

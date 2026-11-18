@@ -7,6 +7,7 @@ import android.provider.DocumentsContract
 import android.webkit.ValueCallback
 import android.webkit.WebView
 import com.qiyu.browser.data.repository.DownloadRepository
+import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.model.BrowserConfig
 import com.qiyu.browser.model.DownloadItem
 import com.qiyu.browser.model.DownloadStatus
@@ -81,14 +82,17 @@ object LocalDownload {
                 throw Exception("blob 文件过大（${total / 1024 / 1024}MB，上限 ${MAX_SIZE / 1024 / 1024}MB）")
             }
 
-            // 真实文件名：优先取点击时记录的锚点 download 名，其次 DOM 锚点，最后按 MIME 生成
+            // 真实文件名：优先取点击时记录的锚点 download 名，其次 DOM 锚点，最后按 MIME 生成；
+            // 清洗非法字符（歌名可能带 / 等），避免被拼进目录路径
             val mime = jsEval(webView, "window['$key.mime']||''").ifEmpty { null }
             val anchorName = jsEval(webView, nameLookupScript(url))
-            val saveName = when {
-                anchorName.isNotEmpty() -> anchorName
-                mime != null -> defaultName(mime)
-                else -> fileName
-            }
+            val saveName = WebUtils.sanitizeFileName(
+                when {
+                    anchorName.isNotEmpty() -> anchorName
+                    mime != null -> defaultName(mime)
+                    else -> fileName
+                }
+            )
 
             val target = openTarget(context, config, saveName, mime)
             var off = 0L
@@ -196,7 +200,7 @@ object LocalDownload {
             } else {
                 Uri.decode(payload).toByteArray()
             }
-            val name = fileName?.takeIf { it.isNotBlank() && it != "download" } ?: defaultName(mime)
+            val name = WebUtils.sanitizeFileName(fileName?.takeIf { it.isNotBlank() && it != "download" } ?: defaultName(mime))
             toastStarted(context, name)
             val target = openTarget(context, config, name, mime)
             target.second.use { it.write(bytes) }
@@ -242,10 +246,11 @@ object LocalDownload {
 
     private suspend fun openTarget(context: Context, config: BrowserConfig, fileName: String, mime: String?): Pair<String, OutputStream> =
         withContext(Dispatchers.Main) {
+            val safe = WebUtils.sanitizeFileName(fileName)
             if (config.downloadDir.startsWith("content://")) {
                 val dirUri = Uri.parse(config.downloadDir)
                 val doc = DocumentsContract.createDocument(
-                    context.contentResolver, dirUri, mime ?: "application/octet-stream", fileName
+                    context.contentResolver, dirUri, mime ?: "application/octet-stream", safe
                 ) ?: throw Exception("Cannot create file in custom directory")
                 val out = context.contentResolver.openOutputStream(doc) ?: throw Exception("Cannot open output stream")
                 Pair(doc.toString(), out)
@@ -258,7 +263,7 @@ object LocalDownload {
                 } ?: throw Exception("External storage not available")
                 val dir = File(baseDir, "downloads")
                 if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, fileName)
+                val file = File(dir, safe)
                 Pair(file.absolutePath, FileOutputStream(file))
             }
         }
