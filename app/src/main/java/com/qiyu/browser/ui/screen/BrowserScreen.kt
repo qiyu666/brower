@@ -44,10 +44,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Code
-import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -464,9 +462,7 @@ fun BrowserScreen(
                     onDev = {
                         showMenu = false
                         onDev()
-                    },
-                    webManager = webManager,
-                    activeTabId = activeTab?.id
+                    }
                 )
             }
         }
@@ -601,9 +597,7 @@ private fun OverflowMenuSheet(
     onTraffic: () -> Unit,
     onScanQr: () -> Unit,
     onClearData: () -> Unit,
-    onDev: () -> Unit,
-    webManager: WebViewManager,
-    activeTabId: Int?
+    onDev: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -647,46 +641,6 @@ private fun OverflowMenuSheet(
             GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
             GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
             GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
-        }
-        Spacer(Modifier.height(12.dp))
-        // 缩放滑杆：打开菜单即可直接拖动改变当前页面缩放（50%~200%）
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            var zoomPct by remember { mutableStateOf(activeTabId?.let { webManager.currentZoom(it) } ?: 100) }
-            Icon(
-                Icons.Filled.ZoomIn,
-                null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(12.dp))
-            Slider(
-                value = (zoomPct - 50) / 150f,
-                onValueChange = { fraction ->
-                    // 引擎按 ~10% 离散档位缩放，1% 细拖无可见差别；对齐到 10%
-                    val pct = ((50 + fraction * 150).roundToInt() + 5) / 10 * 10
-                    zoomPct = pct
-                    activeTabId?.let { tabId -> webManager.setZoom(tabId, pct) }
-                },
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                "${zoomPct}%",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.width(52.dp)
-            )
         }
     }
 }
