@@ -223,9 +223,16 @@ class WebViewManager(
                 // 关闭 overview 模式：它会把页面整体拟合到屏幕宽度，视觉上覆盖/重置缩放；
                 // 改成 Chrome 式“贴合宽度 + 缩放层”，菜单滑杆的 zoom 才可见
                 loadWithOverviewMode = false
-                // 显式把引擎缩放范围钉在 50~200（与菜单滑杆一致），中间档位不被引擎内部 clamp
-                setMinimumScalePercentage(50)
-                setMaximumScalePercentage(200)
+                // 显式把引擎缩放范围钉在 50~200（与菜单滑杆一致）；
+                // 反射调用：当前编译环境对 WebSettings 这两个方法符号解析有缺陷
+                try {
+                    WebSettings::class.java
+                        .getMethod("setMinimumScalePercentage", java.lang.Integer::class.javaPrimitiveType)
+                        .invoke(settings, 50)
+                    WebSettings::class.java
+                        .getMethod("setMaximumScalePercentage", java.lang.Integer::class.javaPrimitiveType)
+                        .invoke(settings, 200)
+                } catch (e: Exception) {}
                 textZoom = config.fontSize
                 cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
                 @Suppress("DEPRECATION")
