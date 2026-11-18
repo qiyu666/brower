@@ -674,7 +674,8 @@ private fun OverflowMenuSheet(
             Slider(
                 value = (zoomPct - 50) / 150f,
                 onValueChange = { fraction ->
-                    val pct = (50 + fraction * 150).roundToInt()
+                    // 引擎按 ~10% 离散档位缩放，1% 细拖无可见差别；对齐到 10%
+                    val pct = ((50 + fraction * 150).roundToInt() + 5) / 10 * 10
                     zoomPct = pct
                     activeTabId?.let { tabId -> webManager.setZoom(tabId, pct) }
                 },

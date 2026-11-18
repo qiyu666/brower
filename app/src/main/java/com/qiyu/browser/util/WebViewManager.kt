@@ -223,6 +223,9 @@ class WebViewManager(
                 // 关闭 overview 模式：它会把页面整体拟合到屏幕宽度，视觉上覆盖/重置缩放；
                 // 改成 Chrome 式“贴合宽度 + 缩放层”，菜单滑杆的 zoom 才可见
                 loadWithOverviewMode = false
+                // 显式把引擎缩放范围钉在 50~200（与菜单滑杆一致），中间档位不被引擎内部 clamp
+                setMinimumScalePercentage(50)
+                setMaximumScalePercentage(200)
                 textZoom = config.fontSize
                 cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
                 @Suppress("DEPRECATION")
@@ -433,9 +436,10 @@ class WebViewManager(
         } catch (e: Exception) {}
     }
 
-    /** 页面缩放（菜单滑杆 / 双指缩放） */
+    /** 页面缩放（菜单滑杆 / 双指缩放）：引擎按 ~10% 离散档位缩放，统一对齐 */
     fun setZoom(tabId: Int, scalePercent: Int) {
-        val factor = (scalePercent / 100).toFloat().coerceIn(0.5f, 2.0f)
+        val pct = ((scalePercent + 5) / 10 * 10).coerceIn(50, 200)
+        val factor = (pct / 100).toFloat()
         zoomFactor[tabId] = factor
         applyZoom(tabId)
     }
