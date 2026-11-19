@@ -99,19 +99,22 @@ object LinuxManager {
             }
         }
 
-    /** 快速校验 gz：能解出第一个 gzip 块就算完整（不完整流会在中途报异常） */
+    /** 快速校验 gz：能完整解一遍才算好（不完整流会在中途报异常） */
     private fun verifyGz(gz: File): Boolean {
         if (!gz.exists() || gz.length() < 1024L) return false
-        return try {
+        val ok = try {
+            var good = true
             FileInputStream(gz).use { fis ->
                 GZIPInputStream(BufferedInputStream(fis)).use { gzis ->
                     val buf = ByteArray(256 * 1024)
                     while (gzis.read(buf) >= 0) { /* 完整解一遍 */ }
                 }
             }
+            good
         } catch (e: Exception) {
             false
         }
+        return ok
     }
 
     private fun downloadBlocking(url: String, out: File, onProgress: (Int) -> Unit): Boolean {
