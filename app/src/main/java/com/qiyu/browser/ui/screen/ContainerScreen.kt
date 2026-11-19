@@ -70,7 +70,7 @@ fun ContainerScreen(onBack: () -> Unit) {
             "select" -> DistList(ctx, pad, { d -> distSel = d; stage = "progress"; progress = 0 }, { d -> distSel = d; stage = "terminal" }, { d -> distSel = d; stage = "config" })
             "progress" -> DownloadStage(ctx, LinuxManager.dist(distSel), progress, pad, { ok ->
                 if (ok) stage = "config"
-                else stage = "select"
+                // 失败时留在本页显示原因（重试/返回按钮在下载页内），不再静默弹回
             })
             "config" -> ConfigWizard(ctx, LinuxManager.dist(distSel), pad, { stage = "terminal" })
             "terminal" -> TerminalView(ctx, LinuxManager.dist(distSel), pad, { stage = "select" })
