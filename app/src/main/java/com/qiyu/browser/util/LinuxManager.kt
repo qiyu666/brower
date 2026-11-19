@@ -2,7 +2,6 @@ package com.qiyu.browser.util
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -56,7 +55,7 @@ object LinuxManager {
     }
 
     /** 下载（直连失败切 gh-proxy）+ gunzip + 解 tar 到 rootDir。onProgress: 0..100 */
-    suspend fun setup(ctx: Context, d: Dist, onProgress: (Int) -> Unit): Result<Void> =
+    suspend fun setup(ctx: Context, d: Dist, onProgress: (Int) -> Unit): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 val dir = baseDir(ctx)
@@ -68,59 +67,57 @@ object LinuxManager {
                 root.mkdirs()
 
                 if (!gz.exists() || gz.length() == 0L) {
+                    var ok = false
                     for (u in listOf(d.url, d.ghProxyUrl)) {
-                        try {
-                            if (downloadWithProgress(u, gz, onProgress)) break
-                        } catch (e: Exception) {
-                            gz.delete()
-                        }
+                        if (downloadBlocking(u, gz, onProgress)) { ok = true; break }
+                        gz.delete()
                     }
+                    if (!ok) return@withContext Result.failure(Exception("rootfs 下载失败（直连与代理均不可用）"))
                 } else {
                     onProgress(100)
                 }
-                if (!gz.exists() || gz.length() == 0) return@withContext Result.failure(Exception("rootfs 下载失败（直连与代理均不可用）"))
+                if (!gz.exists() || gz.length() == 0L) {
+                    return@withContext Result.failure(Exception("rootfs 文件缺失"))
+                }
 
                 gunzipTo(gz, tar)
                 extractTar(tar, root)
                 gz.delete()
                 tar.delete()
-                Result.success(null)
+                Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
 
-    private fun downloadWithProgress(url: String, out: File, onProgress: (Int) -> Unit): Boolean {
-        return suspendCancellableCoroutine { cont ->
-            // 同步实现放 IO 线程（setup 已在 IO）
-            try {
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 30000
-                conn.readTimeout = 30000
-                conn.instanceFollowRedirects = true
-                val total = conn.contentLengthLong
-                conn.inputStream.use { input ->
-                    FileOutputStream(out).use { os ->
-                        val buf = ByteArray(256 * 1024)
-                        var got = 0L
-                        var lastPct = -1
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            os.write(buf, 0, n)
-                            got += n
-                            val pct = if (total > 0) ((got * 100) / total).toInt() else 0
-                            if (pct != lastPct) {
-                                lastPct = pct
-                                onProgress(pct)
-                            }
+    private fun downloadBlocking(url: String, out: File, onProgress: (Int) -> Unit): Boolean {
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+            conn.instanceFollowRedirects = true
+            val total = conn.contentLengthLong
+            conn.inputStream.use { input ->
+                FileOutputStream(out).use { os ->
+                    val buf = ByteArray(256 * 1024)
+                    var got = 0L
+                    var lastPct = -1
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        os.write(buf, 0, n)
+                        got += n
+                        val pct = if (total > 0) ((got * 100) / total).toInt() else 0
+                        if (pct != lastPct) {
+                            lastPct = pct
+                            onProgress(pct)
                         }
                     }
                 }
-                if (!cont.isCancelled) cont.resume(true)
-            } catch (e: Exception) {
-                if (!cont.isCancelled) cont.resume(false)
             }
+            out.length() > 0L
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -350,8 +347,12 @@ object LinuxManager {
         }
     }
 
-    fun desktopInstallScript(d: Dist, de: String): String = when {
-        d.pkgMgr == "apk" -> "apk add -q $desktopPkgs(d, de)"
-        else -> "export DEBIAN_FRONTEND=noninteractive; apt-get install -y " + desktopPkgs(d, de)
+    fun desktopInstallScript(d: Dist, de: String): String {
+        val pkgs = desktopPkgs(d, de)
+        return if (d.pkgMgr == "apk") {
+            "apk add -q " + pkgs
+        } else {
+            "export DEBIAN_FRONTEND=noninteractive; apt-get install -y " + pkgs
+        }
     }
 }

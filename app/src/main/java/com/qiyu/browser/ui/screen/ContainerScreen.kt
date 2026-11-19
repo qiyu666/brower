@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.qiyu.browser.util.LinuxManager
 import com.qiyu.browser.util.LinuxManager.Dist
+import kotlinx.coroutines.await
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -312,13 +313,15 @@ private fun ConfigWizard(ctx: Context, d: Dist, pad: PaddingValues, onDone: () -
                     logs = listOf("写入镜像源：") + lines
                     running = true
                     finished = false
-                    LinuxManager.runScript(ctx, d.name, LinuxManager.updateScript(d)) { line ->
-                        logs = (logs + line).takeLast(300)
-                    } { ok ->
-                        running = false
-                        finished = true
-                        logs = logs + if (ok) "软件包索引更新完成 ✓" else "更新失败：检查镜像源地址或网络"
-                    }
+                    LinuxManager.runScript(
+                        ctx, d.name, LinuxManager.updateScript(d),
+                        onLine = { line -> logs = (logs + line).takeLast(300) },
+                        onDone = { ok ->
+                            running = false
+                            finished = true
+                            logs = logs + if (ok) "软件包索引更新完成 ✓" else "更新失败：检查镜像源地址或网络"
+                        }
+                    )
                 },
                 enabled = !running,
                 modifier = Modifier.fillMaxWidth()
@@ -371,13 +374,15 @@ private fun ConfigWizard(ctx: Context, d: Dist, pad: PaddingValues, onDone: () -
                         logs = listOf("安装 " + desktopSel + "（可能需要几分钟）…")
                         running = true
                         finished = false
-                        LinuxManager.runScript(ctx, d.name, LinuxManager.desktopInstallScript(d, desktopSel)) { line ->
-                            logs = (logs + line).takeLast(300)
-                        } { ok ->
-                            running = false
-                            finished = true
-                            logs = logs + if (ok) "桌面安装完成 ✓" else "桌面安装失败，可稍后在终端手动执行"
-                        }
+                        LinuxManager.runScript(
+                            ctx, d.name, LinuxManager.desktopInstallScript(d, desktopSel),
+                            onLine = { line -> logs = (logs + line).takeLast(300) },
+                            onDone = { ok ->
+                                running = false
+                                finished = true
+                                logs = logs + if (ok) "桌面安装完成 ✓" else "桌面安装失败，可稍后在终端手动执行"
+                            }
+                        )
                     },
                     enabled = !running,
                     modifier = Modifier.fillMaxWidth()
