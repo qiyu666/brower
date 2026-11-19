@@ -287,6 +287,23 @@ object LinuxManager {
         val d = dist(dist)
         val root = rootDir(ctx, dist)
         val proot = prootBin(ctx, dist)
+        val s0 = Session(dist, ProcessBuilder("true").start())
+        // 诊断/自愈：二进制缺失就重新解压一遍（下载有缓存，快），再检查可执行性
+        if (!proot.exists()) {
+            s0.append("proot 二进制缺失：" + proot.absolutePath)
+            s0.append("正在重新解压 rootfs…")
+            Thread {
+                val r = kotlinx.coroutines.runBlocking {
+                    setup(ctx, d) { }
+                }
+                if (!proot.exists()) {
+                    s0.append("重新解压后仍缺失：解压结果 bin/=" + File(root, "bin").exists() + " usr/=" + File(root, "usr").exists())
+                } else if (!proot.canExecute()) {
+                    proot.setExecutable(true)
+                }
+                s0.append("诊断完成，请返回终端重新进入")
+            }.start()
+        }
         val cmd = ArrayList<String>()
         cmd.add(proot.absolutePath)
         cmd.add("-0")
@@ -296,10 +313,18 @@ object LinuxManager {
         cmd.add("/sys")
         cmd.add("-w")
         cmd.add("/root")
-        cmd.add(if (d.pkgMgr == "apk") "/bin/sh" else "/bin/sh")
+        cmd.add("/bin/sh")
         val pb = ProcessBuilder(cmd)
         pb.redirectErrorStream(true)
-        val p = pb.start()
+        val p = try {
+            pb.start()
+        } catch (e: Exception) {
+            s0.append("无法启动 proot：" + e.message)
+            s0.append("二进制：" + proot.absolutePath + " 存在=" + proot.exists() + " 可执行=" + proot.canExecute() + " 大小=" + proot.length())
+            s0.append("rootfs：" + root.absolutePath + " 存在=" + root.exists())
+            // 占位会话：进程已死，输入会被忽略，诊断信息保留在输出里
+            return s0
+        }
         val s = Session(dist, p)
         sessions[dist] = s
         Thread {
@@ -331,6 +356,11 @@ object LinuxManager {
         val d = dist(dist)
         val root = rootDir(ctx, dist)
         val proot = prootBin(ctx, dist)
+        if (!proot.exists() || !root.exists()) {
+            onLine("环境未就绪：rootfs 或 proot 二进制缺失（" + proot.absolutePath + "），请返回重新下载解压")
+            onDone(false)
+            return
+        }
         val cmd = ArrayList<String>()
         cmd.add(proot.absolutePath)
         cmd.add("-0")
