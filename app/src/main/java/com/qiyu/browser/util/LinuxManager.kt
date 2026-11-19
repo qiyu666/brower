@@ -66,29 +66,53 @@ object LinuxManager {
                 if (root.exists()) root.deleteRecursively()
                 root.mkdirs()
 
-                if (!gz.exists() || gz.length() == 0L) {
+                // 下载（旧缓存可能不完整/被污染，先校验，坏就删了重下）
+                if (!verifyGz(gz)) {
+                    gz.delete()
+                    onProgress(0)
                     var ok = false
                     for (u in listOf(d.url, d.ghProxyUrl)) {
                         if (downloadBlocking(u, gz, onProgress)) { ok = true; break }
                         gz.delete()
                     }
-                    if (!ok) return@withContext Result.failure(Exception("rootfs 下载失败（直连与代理均不可用）"))
+                    if (!ok) return@withContext Result.failure(Exception("rootfs 下载失败：直连与 gh-proxy 均不可用"))
+                    if (!verifyGz(gz)) {
+                        gz.delete()
+                        return@withContext Result.failure(Exception("rootfs 下载不完整：两个源都没拿到完整文件，请检查网络后重试"))
+                    }
                 } else {
                     onProgress(100)
-                }
-                if (!gz.exists() || gz.length() == 0L) {
-                    return@withContext Result.failure(Exception("rootfs 文件缺失"))
                 }
 
                 gunzipTo(gz, tar)
                 extractTar(tar, root)
                 gz.delete()
                 tar.delete()
+                // 完整性验收：关键目录都在才算成功
+                val missing = listOf("bin", "usr", "etc").firstOrNull { !File(root, it).exists() }
+                if (missing != null) {
+                    return@withContext Result.failure(Exception("rootfs 解压不完整（缺少 " + missing + " 目录），请删掉旧数据后重试"))
+                }
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
+
+    /** 快速校验 gz：能解出第一个 gzip 块就算完整（不完整流会在中途报异常） */
+    private fun verifyGz(gz: File): Boolean {
+        if (!gz.exists() || gz.length() < 1024L) return false
+        return try {
+            FileInputStream(gz).use { fis ->
+                GZIPInputStream(BufferedInputStream(fis)).use { gzis ->
+                    val buf = ByteArray(256 * 1024)
+                    while (gzis.read(buf) >= 0) { /* 完整解一遍 */ }
+                }
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     private fun downloadBlocking(url: String, out: File, onProgress: (Int) -> Unit): Boolean {
         return try {
@@ -96,6 +120,11 @@ object LinuxManager {
             conn.connectTimeout = 30000
             conn.readTimeout = 30000
             conn.instanceFollowRedirects = true
+            val code = conn.responseCode
+            if (code != 200) {
+                conn.disconnect()
+                return false
+            }
             val total = conn.contentLengthLong
             val t0 = System.currentTimeMillis()
             var complete = false
@@ -142,12 +171,18 @@ object LinuxManager {
         }
     }
 
-    /** 最小 tar 解包：ustar 512B 头，支持常规文件/目录/符号链接（rootfs 全是这些） */
+    /** 最小 tar 解包：512B 头，支持常规文件/目录/符号链接/硬链接（rootfs 全是这些） */
     private fun extractTar(tar: File, to: File) {
         FileInputStream(tar).buffered().use { br ->
             while (true) {
                 val header = ByteArray(512)
-                if (br.read(header) != 512) break
+                var off = 0
+                while (off < 512) {
+                    val n = br.read(header, off, 512 - off)
+                    if (n <= 0) break
+                    off += n
+                }
+                if (off < 512) break
                 if (header.all { it.toByte() == 0.toByte() }) break
                 val name = cstr(header, 0, 100)
                 val sizeStr = cstr(header, 124, 12).trim { it <= ' ' }

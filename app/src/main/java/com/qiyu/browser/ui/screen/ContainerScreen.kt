@@ -135,10 +135,17 @@ private fun DistList(
 @Composable
 private fun DownloadStage(ctx: Context, d: Dist, progress: Int, pad: PaddingValues, onDone: (Boolean) -> Unit) {
     var pct by remember { mutableStateOf(progress) }
-    var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(d.name) {
+    var errMsg by remember { mutableStateOf("") }
+    var tick by remember { mutableStateOf(0) }
+    LaunchedEffect(d.name, tick) {
+        errMsg = ""
         val r = LinuxManager.setup(ctx, d) { p -> pct = p }
-        if (r.isSuccess) onDone(true) else { failed = true; onDone(false) }
+        if (r.isSuccess) onDone(true)
+        else {
+            val e = r.exceptionOrNull()
+            errMsg = if (e != null) e.message ?: e.javaClass.simpleName else "未知错误"
+            onDone(false)
+        }
     }
     Column(
         Modifier
@@ -156,14 +163,17 @@ private fun DownloadStage(ctx: Context, d: Dist, progress: Int, pad: PaddingValu
         Spacer(Modifier.height(16.dp))
         Text(d.label + " " + d.version, style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(24.dp))
-        if (failed) {
+        if (errMsg.isNotEmpty()) {
             Text(
-                "下载失败：直连与 gh-proxy 代理均不可用，请检查网络后返回重试",
+                errMsg,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(16.dp))
-            Button(onClick = { onDone(false) }) { Text("返回") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { tick = tick + 1; pct = 0 }) { Text("重试") }
+                Button(onClick = { onDone(false) }) { Text("返回") }
+            }
         } else {
             LinearProgressIndicator(
                 progress = { pct / 100f },
