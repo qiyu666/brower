@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.qiyu.browser.util.LinuxManager
 import com.qiyu.browser.util.LinuxManager.Dist
-import kotlinx.coroutines.await
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -444,7 +443,9 @@ private fun TerminalView(ctx: Context, d: Dist, pad: PaddingValues, onClose: () 
     LaunchedEffect(pasteTick) {
         if (pasteTick > 0) {
             try {
-                val text = clipboard.getText().await()
+                val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    clipboard.getText()
+                }
                 if (text != null) input = input + text
             } catch (e: Exception) {}
         }
