@@ -97,6 +97,8 @@ object LinuxManager {
             conn.readTimeout = 30000
             conn.instanceFollowRedirects = true
             val total = conn.contentLengthLong
+            val t0 = System.currentTimeMillis()
+            var complete = false
             conn.inputStream.use { input ->
                 FileOutputStream(out).use { os ->
                     val buf = ByteArray(256 * 1024)
@@ -104,9 +106,13 @@ object LinuxManager {
                     var lastPct = -1
                     while (true) {
                         val n = input.read(buf)
-                        if (n < 0) break
+                        if (n < 0) { complete = true; break }
                         os.write(buf, 0, n)
                         got += n
+                        val now = System.currentTimeMillis()
+                        // 慢速自动切代理：下载 5s 后平均速度不足 12KB/s 就掐掉，交给下一个 URL（gh-proxy）
+                        val el = now - t0
+                        if (el >= 5000L && got < el / 1000 * 12) break
                         val pct = if (total > 0) ((got * 100) / total).toInt() else 0
                         if (pct != lastPct) {
                             lastPct = pct
@@ -115,7 +121,7 @@ object LinuxManager {
                     }
                 }
             }
-            out.length() > 0L
+            complete && out.length() > 1024L
         } catch (e: Exception) {
             false
         }
