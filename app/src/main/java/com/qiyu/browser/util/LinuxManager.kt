@@ -189,7 +189,12 @@ object LinuxManager {
                 if (header.all { it.toByte() == 0.toByte() }) break
                 val name = cstr(header, 0, 100)
                 val sizeStr = cstr(header, 124, 12).trim { it <= ' ' }
-                val size = sizeStr.toLong(8)
+                // GNU tar 的空目录/空条目 size 字段是空串，不能直接 toLong
+                val size = if (sizeStr.isEmpty()) 0L else try {
+                    sizeStr.toLong(8)
+                } catch (e: Exception) {
+                    0L
+                }
                 val type = header[156].toChar()
                 val link = cstr(header, 157, 100)
                 // ustar 长名
@@ -207,18 +212,10 @@ object LinuxManager {
                 }
                 if (fullName == "" || fullName == "./") continue
                 val target = File(to, fullName.trimStart('/'))
-                if (fullName.endsWith("/") || type == 'd') {
-                    target.mkdirs()
-                } else if (type == '5' && link.isNotEmpty()) {
-                    try {
-                        if (target.exists()) target.delete()
-                        java.nio.file.Files.createSymbolicLink(
-                            target.toPath(),
-                            java.nio.file.Paths.get(link),
-                            null
-                        )
-                    } catch (e: Exception) {
-                        // 目标不存在时符号链接照样建（相对/绝对路径直接指向）
+                try {
+                    if (fullName.endsWith("/") || type == 'd') {
+                        target.mkdirs()
+                    } else if (type == '5' && link.isNotEmpty()) {
                         try {
                             if (target.exists()) target.delete()
                             java.nio.file.Files.createSymbolicLink(
@@ -226,23 +223,35 @@ object LinuxManager {
                                 java.nio.file.Paths.get(link),
                                 null
                             )
-                        } catch (e2: Exception) {}
+                        } catch (e: Exception) {
+                            // 目标不存在时符号链接照样建（相对/绝对路径直接指向）
+                            try {
+                                if (target.exists()) target.delete()
+                                java.nio.file.Files.createSymbolicLink(
+                                    target.toPath(),
+                                    java.nio.file.Paths.get(link),
+                                    null
+                                )
+                            } catch (e2: Exception) {}
+                        }
+                    } else {
+                        val parent = target.parentFile
+                        if (parent != null) parent.mkdirs()
+                        if (type == '2' && link.isNotEmpty()) {
+                            // 硬链接：指向 rootfs 内路径
+                            val src = File(to, link.trimStart('/'))
+                            try {
+                                if (src.exists()) {
+                                    java.nio.file.Files.createLink(target.toPath(), src.toPath())
+                                    continue
+                                }
+                            } catch (e: Exception) {}
+                        }
+                        FileOutputStream(target).use { os -> os.write(data) }
+                        if (header[146].toInt() != '0'.code) target.setExecutable(true, false)
                     }
-                } else {
-                    val parent = target.parentFile
-                    if (parent != null) parent.mkdirs()
-                    if (type == '2' && link.isNotEmpty()) {
-                        // 硬链接：指向 rootfs 内路径
-                        val src = File(to, link.trimStart('/'))
-                        try {
-                            if (src.exists()) {
-                                java.nio.file.Files.createLink(target.toPath(), src.toPath())
-                                continue
-                            }
-                        } catch (e: Exception) {}
-                    }
-                    FileOutputStream(target).use { os -> os.write(data) }
-                    if (header[146].toInt() != '0'.code) target.setExecutable(true, false)
+                } catch (e: Exception) {
+                    // 单条坏记录不中断整体解压（数据已读走，继续下一条）
                 }
             }
         }
