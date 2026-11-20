@@ -210,6 +210,15 @@ object LinuxManager {
                     if (n <= 0) break
                     read += n
                 }
+                // 关键：tar 数据块按 512 字节对齐，必须跳完剩余 padding，否则下一个头读到数据中间
+                var pad = ((512 - (size % 512)) % 512).toInt()
+                val padBuf = ByteArray(pad)
+                var padRead = 0
+                while (padRead < pad) {
+                    val n = br.read(padBuf, padRead, pad - padRead)
+                    if (n <= 0) break
+                    padRead += n
+                }
                 if (fullName == "" || fullName == "./") continue
                 val target = File(to, fullName.trimStart('/'))
                 try {
@@ -288,6 +297,7 @@ object LinuxManager {
         val root = rootDir(ctx, dist)
         val proot = prootBin(ctx, dist)
         val s0 = Session(dist, ProcessBuilder("true").start())
+        sessions[dist] = s0
         // 诊断/自愈：二进制缺失就重新解压一遍（下载有缓存，快），再检查可执行性
         if (!proot.exists()) {
             s0.append("proot 二进制缺失：" + proot.absolutePath)
@@ -303,6 +313,7 @@ object LinuxManager {
                 }
                 s0.append("诊断完成，请返回终端重新进入")
             }.start()
+            return s0
         }
         val cmd = ArrayList<String>()
         cmd.add(proot.absolutePath)
