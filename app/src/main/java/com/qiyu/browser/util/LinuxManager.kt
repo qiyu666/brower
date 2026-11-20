@@ -298,55 +298,81 @@ object LinuxManager {
         val proot = prootBin(ctx, dist)
         val s0 = Session(dist, ProcessBuilder("true").start())
         sessions[dist] = s0
-        // 诊断/自愈：二进制缺失就重新解压一遍（下载有缓存，快），再检查可执行性
-        if (!proot.exists()) {
-            s0.append("proot 二进制缺失：" + proot.absolutePath)
-            s0.append("正在重新解压 rootfs…")
-            Thread {
-                val r = kotlinx.coroutines.runBlocking {
-                    setup(ctx, d) { }
-                }
-                if (!proot.exists()) {
-                    s0.append("重新解压后仍缺失：解压结果 bin/=" + File(root, "bin").exists() + " usr/=" + File(root, "usr").exists())
-                } else if (!proot.canExecute()) {
-                    proot.setExecutable(true)
-                }
-                s0.append("诊断完成，请返回终端重新进入")
-            }.start()
-            return s0
-        }
-        val cmd = ArrayList<String>()
-        cmd.add(proot.absolutePath)
-        cmd.add("-0")
-        cmd.add("-r")
-        cmd.add(root.absolutePath)
-        cmd.add("-b")
-        cmd.add("/sys")
-        cmd.add("-w")
-        cmd.add("/root")
-        cmd.add("/bin/sh")
-        val pb = ProcessBuilder(cmd)
-        pb.redirectErrorStream(true)
-        val p = try {
-            pb.start()
-        } catch (e: Exception) {
-            s0.append("无法启动 proot：" + e.message)
-            s0.append("二进制：" + proot.absolutePath + " 存在=" + proot.exists() + " 可执行=" + proot.canExecute() + " 大小=" + proot.length())
-            s0.append("rootfs：" + root.absolutePath + " 存在=" + root.exists())
-            // 占位会话：进程已死，输入会被忽略，诊断信息保留在输出里
-            return s0
-        }
-        val s = Session(dist, p)
-        sessions[dist] = s
-        Thread {
-            val rd = p.inputStream.bufferedReader()
-            while (true) {
-                val line = rd.readLine()
-                if (line == null) break
-                s.append(line)
+
+        fun launch(): Process? {
+            val cmd = ArrayList<String>()
+            cmd.add(proot.absolutePath)
+            cmd.add("-0")
+            cmd.add("-r")
+            cmd.add(root.absolutePath)
+            cmd.add("-b")
+            cmd.add("/sys")
+            cmd.add("-w")
+            cmd.add("/root")
+            cmd.add("/bin/sh")
+            val pb = ProcessBuilder(cmd)
+            pb.redirectErrorStream(true)
+            return try {
+                pb.start()
+            } catch (e: Exception) {
+                s0.append("启动失败：" + (e.message ?: e.javaClass.simpleName))
+                s0.append("二进制 存在=" + proot.exists() + " 可执行=" + proot.canExecute() + " 大小=" + proot.length())
+                null
             }
+        }
+
+        // 先试启动（存在时）；启动器调用在 UI 线程，重活（重解压）一律后台
+        val p = if (proot.exists()) launch() else null
+        if (p != null) {
+            // 自检：跑一次 --version，确认二进制在这台机器上真能执行
+            try {
+                val vt = ProcessBuilder(proot.absolutePath, "--version").redirectErrorStream(true).start()
+                val out = vt.inputStream.bufferedReader().readText().lineSequence().firstOrNull()
+                vt.waitFor()
+                s0.append("自检：" + (out ?: "proot --version 无输出"))
+            } catch (e: Exception) {
+                s0.append("自检失败：" + (e.message ?: e.javaClass.simpleName))
+            }
+            val s = Session(dist, p)
+            sessions[dist] = s
+            Thread {
+                val rd = p.inputStream.bufferedReader()
+                while (true) {
+                    val line = rd.readLine()
+                    if (line == null) break
+                    s.append(line)
+                }
+            }.start()
+            return s
+        }
+        // 启动失败/缺失：后台重新解压并重试
+        s0.append("proot 无法启动，正在重新解压并重试…")
+        Thread {
+            kotlinx.coroutines.runBlocking { setup(ctx, d) { } }
+            if (!proot.exists()) {
+                s0.append("重解压后仍缺失：bin/=" + File(root, "bin").exists() + " usr/=" + File(root, "usr").exists() + " root/=" + root.exists())
+                s0.append("请回下载页重新点下载")
+                return@Thread
+            }
+            if (!proot.canExecute()) proot.setExecutable(true)
+            val p2 = launch()
+            if (p2 == null) {
+                s0.append("重解压后仍无法启动（可能 ROM 限制）。设置页确认版本号，或换 Debian 试")
+                return@Thread
+            }
+            val s2 = Session(dist, p2)
+            sessions[dist] = s2
+            Thread {
+                val rd = p2.inputStream.bufferedReader()
+                while (true) {
+                    val line = rd.readLine()
+                    if (line == null) break
+                    s2.append(line)
+                }
+            }.start()
+            s0.append("重试成功，会话已恢复")
         }.start()
-        return s
+        return s0
     }
 
     fun stopShell(dist: String) {
