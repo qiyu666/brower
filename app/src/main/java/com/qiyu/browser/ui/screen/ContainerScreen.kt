@@ -584,7 +584,7 @@ private fun TermuxFallback(ctx: Context, distName: String) {
             androidx.core.app.ActivityCompat.requestPermissions(
                 act,
                 arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                0x4C51L
+                0x4C51
             )
             msg = "已弹出存储权限请求：授予后再点一次「切 Termux 模式」"
         } else {
@@ -607,7 +607,7 @@ private fun TermuxFallback(ctx: Context, distName: String) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { requestWpAndRun() }) { Text("切 Termux 模式") }
             if (cmd.isNotEmpty()) {
-                Button(onClick = { clipboard.setText(androidx.compose.ui.platform.AnnotatedString(cmd)) }) { Text("复制手动命令") }
+                Button(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(cmd)) }) { Text("复制手动命令") }
             }
         }
         if (msg.isNotEmpty()) {
