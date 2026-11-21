@@ -27,20 +27,20 @@ object LinuxManager {
     val DISTROS = listOf(
         Dist(
             "alpine", "Alpine Linux", "3.22",
-            "https://github.com/qiyu666/brower/raw/linux-rootfs/alpine-rootfs-v2.tar.gz",
-            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/alpine-rootfs-v2.tar.gz",
+            "https://github.com/qiyu666/brower/raw/linux-rootfs/alpine-rootfs-v3.tar.gz",
+            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/alpine-rootfs-v3.tar.gz",
             4, "apk"
         ),
         Dist(
             "debian", "Debian", "13 (trixie)",
-            "https://github.com/qiyu666/brower/raw/linux-rootfs/debian-rootfs-v2.tar.gz",
-            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/debian-rootfs-v2.tar.gz",
+            "https://github.com/qiyu666/brower/raw/linux-rootfs/debian-rootfs-v3.tar.gz",
+            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/debian-rootfs-v3.tar.gz",
             48, "apt"
         ),
         Dist(
             "ubuntu", "Ubuntu", "24.04 (noble)",
-            "https://github.com/qiyu666/brower/raw/linux-rootfs/ubuntu-rootfs-v2.tar.gz",
-            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/ubuntu-rootfs-v2.tar.gz",
+            "https://github.com/qiyu666/brower/raw/linux-rootfs/ubuntu-rootfs-v3.tar.gz",
+            "https://gh-proxy.com/https://github.com/qiyu666/brower/raw/linux-rootfs/ubuntu-rootfs-v3.tar.gz",
             28, "apt"
         )
     )
@@ -60,8 +60,8 @@ object LinuxManager {
             try {
                 val dir = baseDir(ctx)
                 dir.mkdirs()
-                val gz = File(dir, "${d.name}-rootfs-v2.tar.gz")
-                val tar = File(dir, "${d.name}-rootfs-v2.tar")
+                val gz = File(dir, "${d.name}-rootfs-v3.tar.gz")
+                val tar = File(dir, "${d.name}-rootfs-v3.tar")
                 val root = rootDir(ctx, d.name)
                 if (root.exists()) root.deleteRecursively()
                 root.mkdirs()
