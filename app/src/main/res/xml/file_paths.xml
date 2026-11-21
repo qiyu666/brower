@@ -9,4 +9,7 @@
     <external-files-path
         name="updates"
         path="updates/" />
+    <files-path
+        name="qiyu_termux"
+        path="qiyu-termux/" />
 </paths>

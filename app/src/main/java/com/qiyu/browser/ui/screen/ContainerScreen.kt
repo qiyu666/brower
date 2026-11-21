@@ -506,6 +506,11 @@ private fun TerminalView(ctx: Context, d: Dist, pad: PaddingValues, onClose: () 
             )
         }
         item {
+            if (lines.any { it.contains("启动失败") || it.contains("无法启动") }) {
+                TermuxFallback(ctx, d.name)
+            }
+        }
+        item {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -546,6 +551,83 @@ private fun TerminalView(ctx: Context, d: Dist, pad: PaddingValues, onClose: () 
                     }
                 }) { Text("执行") }
             }
+        }
+    }
+}
+
+@Composable
+private fun TermuxFallback(ctx: Context, distName: String) {
+    var msg by remember { mutableStateOf("") }
+    var cmd by remember { mutableStateOf("") }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+
+    fun runTermux() {
+        Thread {
+            val r = LinuxManager.termuxMode(ctx, distName)
+            cmd = r.command
+            msg = if (r.note.isNotEmpty()) {
+                r.note
+            } else if (r.launched) {
+                "已跳转 Termux：新会话会自动执行解压+启动 proot。若 Termux 里提示缺 proot，先 pkg install proot && termux-setup-storage"
+            } else {
+                "未能自动拉起 Termux（需安装 Termux + pkg install proot termux-api）。手动方式：打开 Termux 粘贴下方命令"
+            }
+        }.start()
+    }
+
+    fun requestWpAndRun() {
+        val act = (ctx as? android.app.Activity)
+        if (act != null &&
+            android.os.Build.VERSION.SDK_INT <= 29 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                act,
+                arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                0x4C51L
+            )
+            msg = "已弹出存储权限请求：授予后再点一次「切 Termux 模式」"
+        } else {
+            runTermux()
+        }
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            "本 ROM 限制了 app 执行私有目录二进制。兜底：Termux 模式（rootfs 交给 Termux 的 proot 执行，终端开在 Termux 窗口）",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF8B93A3)
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { requestWpAndRun() }) { Text("切 Termux 模式") }
+            if (cmd.isNotEmpty()) {
+                Button(onClick = { clipboard.setText(androidx.compose.ui.platform.AnnotatedString(cmd)) }) { Text("复制手动命令") }
+            }
+        }
+        if (msg.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                msg,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF8B93A3)
+            )
+        }
+        if (cmd.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "\u25b6 " + cmd,
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                color = Color(0xFFB9C2D0),
+                maxLines = 12
+            )
         }
     }
 }

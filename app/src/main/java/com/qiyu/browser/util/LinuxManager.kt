@@ -86,7 +86,7 @@ object LinuxManager {
 
                 gunzipTo(gz, tar)
                 extractTar(tar, root)
-                gz.delete()
+                // gz 保留：Termux 模式需要共享存储拷贝；tar 中间产物可删
                 tar.delete()
                 // 完整性验收：关键目录都在才算成功
                 val missing = listOf("bin", "usr", "etc").firstOrNull { !File(root, it).exists() }
@@ -480,5 +480,61 @@ object LinuxManager {
         } else {
             "export DEBIAN_FRONTEND=noninteractive; apt-get install -y " + pkgs
         }
+    }
+
+    // ---------- Termux 模式（ROM 不允许 app 执行私有目录二进制时的兑底） ----------
+
+    class TermuxLaunch(
+        val command: String,
+        val launched: Boolean,
+        val note: String
+    )
+
+    /**
+     * 把 rootfs tar 拷到 /sdcard/Download/qiyu-linux/，生成 Termux 一行命令；
+     * 若 Termux（带 termux-api）在场，直接 com.termux.RUN 拉起新会话执行。
+     * 前置条件（Termux 内）：pkg install proot termux-api；termux-setup-storage 一次。
+     */
+    fun termuxMode(ctx: Context, dist: String): TermuxLaunch {
+        val d = dist(dist)
+        val gz = File(baseDir(ctx), "${d.name}-rootfs-v5.tar.gz")
+        val dir = File(android.os.Environment.getExternalStorageDirectory(), "Download/qiyu-linux")
+        dir.mkdirs()
+        val shared = File(dir, "${d.name}-rootfs-v5.tar.gz")
+        var note = ""
+        if (!gz.exists()) {
+            note = "rootfs 未下载：请先在上一页完成下载，再切 Termux 模式"
+        } else {
+            try {
+                java.nio.file.Files.copy(gz.toPath(), shared.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } catch (e: Exception) {
+                note = "rootfs 拷到共享存储失败（需要存储权限）：" + (e.message ?: e.javaClass.simpleName)
+            }
+        }
+        val sdPath = "/sdcard/Download/qiyu-linux/" + shared.name
+        val home = "~/.qiyu-linux/" + d.name
+        val command =
+            "mkdir -p " + home + " && { [ -d " + home + "/usr ] || tar xzf " + sdPath + " -C " + home + "; }; " +
+            "command -v proot >/dev/null 2>&1 || { echo 'Termux 里先跑：pkg install proot && termux-setup-storage'; exit 1; }; " +
+            "cd " + home + " && proot -0 -r " + home + " -b /sys -w /root /bin/sh"
+        // 命令文件：供 com.termux.RUN 通过 FileProvider content URI 读取
+        val cmdFile = File(ctx.filesDir, "qiyu-termux/" + d.name + ".cmd")
+        cmdFile.parentFile?.mkdirs()
+        FileOutputStream(cmdFile).use { it.write(command.toByteArray()) }
+        var launched = false
+        if (note.isEmpty()) {
+            try {
+                val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", cmdFile)
+                val i = android.content.Intent("com.termux.RUN")
+                i.setData(uri)
+                i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                i.setPackage("com.termux")
+                ctx.startActivity(i)
+                launched = true
+            } catch (e: Exception) {
+                launched = false
+            }
+        }
+        return TermuxLaunch(command, launched, note)
     }
 }
