@@ -317,6 +317,12 @@ object LinuxManager {
             } catch (e: Exception) {
                 s0.append("启动失败：" + (e.message ?: e.javaClass.simpleName))
                 s0.append("二进制 存在=" + proot.exists() + " 可执行=" + proot.canExecute() + " 大小=" + proot.length())
+                try {
+                    val sp = ProcessBuilder("/system/bin/sh", "-c", "true").start()
+                    s0.append("对照 系统sh执行=成功 code=" + sp.waitFor())
+                } catch (e2: Exception) {
+                    s0.append("对照 系统sh执行=失败 " + (e2.message ?: e2.javaClass.simpleName))
+                }
                 null
             }
         }

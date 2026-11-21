@@ -501,8 +501,8 @@ private fun TerminalView(ctx: Context, d: Dist, pad: PaddingValues, onClose: () 
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
                 color = if (line.startsWith("\u25b6 ")) Color(0xFF7EE0A0) else Color(0xFFD7DEE8),
-                maxLines = 1,
-                overflow = TextOverflow.Clip
+                maxLines = if (line.contains("失败") || line.contains("error") || line.contains("CANNOT")) 12 else 1,
+                overflow = if (line.contains("失败") || line.contains("error") || line.contains("CANNOT")) TextOverflow.Visible else TextOverflow.Clip
             )
         }
         item {
