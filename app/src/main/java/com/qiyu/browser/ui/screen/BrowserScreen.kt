@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
@@ -79,7 +78,6 @@ fun BrowserScreen(
     onScanQr: () -> Unit,
     onClearData: (Boolean, Boolean, Boolean) -> Unit,
     onDev: () -> Unit,
-    onContainer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
@@ -464,10 +462,6 @@ fun BrowserScreen(
                     onDev = {
                         showMenu = false
                         onDev()
-                    },
-                    onContainer = {
-                        showMenu = false
-                        onContainer()
                     }
                 )
             }
@@ -603,8 +597,7 @@ private fun OverflowMenuSheet(
     onTraffic: () -> Unit,
     onScanQr: () -> Unit,
     onClearData: () -> Unit,
-    onDev: () -> Unit,
-    onContainer: () -> Unit
+    onDev: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -648,7 +641,6 @@ private fun OverflowMenuSheet(
             GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
             GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
             GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
-            GridMenuItem(Icons.Filled.Memory, "容器", modifier = Modifier.weight(1f), onClick = onContainer)
         }
     }
 }
