@@ -77,6 +77,19 @@ class BookmarksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun removeByURL(url: String) {
+        viewModelScope.launch {
+            repo.deleteByUrl(url)
+            isBookmarked.value = false
+        }
+    }
+
+    fun updateBookmarkTitle(bookmark: Bookmark, newTitle: String) {
+        viewModelScope.launch {
+            repo.update(bookmark.copy(title = newTitle.trim().ifEmpty { bookmark.title }))
+        }
+    }
+
     fun checkBookmarked(url: String) {
         viewModelScope.launch {
             isBookmarked.value = repo.isBookmarked(url)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Add
@@ -42,6 +43,8 @@ fun BookmarksScreen(
     var searchInput by remember { mutableStateOf("") }
     var showFolderDialog by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
+    var editTarget by remember { mutableStateOf<Bookmark?>(null) }
+    var editTitle by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -171,7 +174,11 @@ fun BookmarksScreen(
                             BookmarkItem(
                                 bookmark = bookmark,
                                 onOpen = { onOpenUrl(bookmark.url) },
-                                onDelete = { viewModel.removeBookmark(bookmark) }
+                                onDelete = { viewModel.removeBookmark(bookmark) },
+                                onEdit = {
+                                    editTarget = bookmark
+                                    editTitle = bookmark.title
+                                }
                             )
                         }
                     }
@@ -202,6 +209,30 @@ fun BookmarksScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showFolderDialog = false }) { Text(AppStrings.t("cancel")) }
+            }
+        )
+    }
+
+    // 编辑书签标题对话框
+    if (editTarget != null) {
+        AlertDialog(
+            onDismissRequest = { editTarget = null },
+            title = { Text(AppStrings.t("edit_title")) },
+            text = {
+                OutlinedTextField(
+                    value = editTitle,
+                    onValueChange = { editTitle = it },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    editTarget?.let { viewModel.updateBookmarkTitle(it, editTitle) }
+                    editTarget = null
+                }) { Text(AppStrings.t("save")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editTarget = null }) { Text(AppStrings.t("cancel")) }
             }
         )
     }
@@ -255,7 +286,8 @@ private fun BookmarkFolderRow(
 private fun BookmarkItem(
     bookmark: Bookmark,
     onOpen: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -278,8 +310,18 @@ private fun BookmarkItem(
         Text(
             WebUtils.extractDomain(bookmark.url),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            modifier = Modifier
+                .clickable { onEdit() }
+                .padding(vertical = 4.dp)
         )
+        IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+            Icon(
+                Icons.Filled.Edit, "Edit",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
         IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
             Icon(
                 Icons.Default.Delete, "Delete",

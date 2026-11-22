@@ -34,10 +34,11 @@ fun NewTabPage(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     searchEngine: String = "google",
-    recentItems: List<com.qiyu.browser.model.HistoryItem> = emptyList()
+    recentItems: List<com.qiyu.browser.model.HistoryItem> = emptyList(),
+    favorites: List<com.qiyu.browser.model.Bookmark> = emptyList(),
+    isDark: Boolean = false
 ) {
     var query by remember { mutableStateOf("") }
-    val isDark = isSystemInDarkTheme()
 
     val bgColor = if (isDark) Color.Black else Color.White
     val inputBg = if (isDark) Color(0xFF1E1E1E) else Color(0xFFFAFAFA)
@@ -116,7 +117,7 @@ fun NewTabPage(
                         Box(contentAlignment = Alignment.Center) {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = if (AppStrings.currentLanguage == "zh") "在此处输入关键词" else "Search here",
+                                    text = AppStrings.t("search_hint"),
                                     color = iconColor.copy(alpha = 0.6f),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -136,11 +137,56 @@ fun NewTabPage(
                 )
             }
 
+            // 收藏快捷区（非文件夹前 8 个）
+            val favItems = favorites.filter { !it.isFolder }.take(8)
+            if (favItems.isNotEmpty()) {
+                Spacer(Modifier.height(36.dp))
+                Text(
+                    text = AppStrings.t("favorites"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = iconColor.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                val favRows = favItems.chunked(4)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    favRows.forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.forEach { fav ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(72.dp)
+                                        .height(72.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(inputBg)
+                                        .border(1.dp, inputBorder, RoundedCornerShape(12.dp))
+                                        .clickable { onNavigate(fav.url) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(6.dp)
+                                    ) {
+                                        Text(
+                                            text = com.qiyu.browser.util.WebUtils.extractDomain(fav.url),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = textColor,
+                                            maxLines = 2
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+
             // 最近访问
             if (recentItems.isNotEmpty()) {
                 Spacer(Modifier.height(36.dp))
                 Text(
-                    text = if (AppStrings.currentLanguage == "zh") "最近访问" else "Recently visited",
+                    text = AppStrings.t("recently"),
                     style = MaterialTheme.typography.labelLarge,
                     color = iconColor.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth()

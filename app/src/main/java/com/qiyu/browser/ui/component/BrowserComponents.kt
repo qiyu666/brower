@@ -84,7 +84,7 @@ fun AddressBar(
     val suggestRows = remember(showSuggest, inputText, localSuggests, remoteSuggests) {
         if (!showSuggest || inputText.length < 2) return@remember emptyList<SuggestRow>()
         val rows = mutableListOf(
-            SuggestRow("搜索 ${inputText} · ${WebUtils.engineLabel(searchEngine)}", SuggestRowKind.SEARCH)
+            SuggestRow(AppStrings.t("search_suggest") + " " + inputText + " · " + WebUtils.engineLabel(searchEngine), SuggestRowKind.SEARCH)
         )
         remoteSuggests.distinct().forEach { rows += SuggestRow(it, SuggestRowKind.REMOTE) }
         localSuggests.distinct().filter { l -> remoteSuggests.none { r -> r.equals(l, true) } }
@@ -266,7 +266,7 @@ fun TabStrip(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (tab.title.isEmpty() || tab.title == "about:blank") "New Tab" else tab.title,
+                            text = if (tab.title.isEmpty() || tab.title == "about:blank") AppStrings.t("new_tab") else tab.title,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

@@ -70,7 +70,7 @@ fun SettingsScreen(
             } catch (e: Exception) { "" }
             val info = withContext(Dispatchers.IO) { UpdateChecker.fetchLatest() }
             val newState: UpdateCheckState = when {
-                info == null -> UpdateCheckState.Failed("检查失败：无法连接 GitHub，请稍后重试")
+                info == null -> UpdateCheckState.Failed(AppStrings.t("up_check_failed"))
                 !UpdateChecker.isNewer(info.version, current) -> UpdateCheckState.UpToDate(info.version)
                 else -> UpdateCheckState.NewVersion(info)
             }
@@ -88,7 +88,7 @@ fun SettingsScreen(
             val newState: UpdateCheckState = if (ok) {
                 UpdateCheckState.ReadyToInstall(target, info.version)
             } else {
-                UpdateCheckState.Failed("下载失败：直连与 gh-proxy 代理均不可用，请稍后重试")
+                UpdateCheckState.Failed(AppStrings.t("up_dl_failed"))
             }
             updateState = newState
         }
@@ -174,9 +174,9 @@ fun SettingsScreen(
     if (installPermPending && updateState is UpdateCheckState.ReadyToInstall) {
         AlertDialog(
             onDismissRequest = { installPermPending = false },
-            title = { Text("需要安装权限") },
+            title = { Text(AppStrings.t("up_perm_title")) },
             text = {
-                Text("系统要求先允许本应用“安装未知应用”。如设置页里找不到开关或被拦截，可直接点“稍后”，在“下载完成”对话框里改用“用文件管理器安装”。")
+                Text(AppStrings.t("up_perm_msg"))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -195,10 +195,10 @@ fun SettingsScreen(
                             Toast.makeText(context, "无法打开安装权限设置页，请手动安装 Download 目录里的 APK", Toast.LENGTH_LONG).show()
                         }
                     }
-                }) { Text("去设置") }
+                }) { Text(AppStrings.t("up_perm_later")) }
             },
             dismissButton = {
-                TextButton(onClick = { installPermPending = false }) { Text("稍后") }
+                TextButton(onClick = { installPermPending = false }) { Text(AppStrings.t("up_perm_later")) }
             }
         )
     }
@@ -214,7 +214,7 @@ fun SettingsScreen(
                 ) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
-                    Text("正在检查更新…")
+                    Text(AppStrings.t("up_checking"))
                 }
             },
             confirmButton = {}
@@ -234,7 +234,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "已是最新版本 v${st.latestVersion}",
+                        AppStrings.t("up_to_date") + " v" + st.latestVersion,
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -245,20 +245,20 @@ fun SettingsScreen(
         )
         is UpdateCheckState.NewVersion -> AlertDialog(
             onDismissRequest = { updateState = UpdateCheckState.Idle },
-            title = { Text("发现新版本 v${st.info.version}") },
-            text = { Text(if (st.info.notes.isNotEmpty()) st.info.notes else "点击“更新”下载最新版本") },
+            title = { Text(AppStrings.t("up_new") + " v" + st.info.version) },
+            text = { Text(if (st.info.notes.isNotEmpty()) st.info.notes else AppStrings.t("up_downloading")) },
             confirmButton = {
-                TextButton(onClick = { startDownload(st.info) }) { Text("更新") }
+                TextButton(onClick = { startDownload(st.info) }) { Text(AppStrings.t("up_update")) }
             },
             dismissButton = {
-                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("稍后") }
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text(AppStrings.t("up_later")) }
             }
         )
         is UpdateCheckState.Downloading -> AlertDialog(
             onDismissRequest = { },
             text = {
                 Column(Modifier.fillMaxWidth()) {
-                    Text("正在下载 v${st.info.version}… ${st.progress}%")
+                    Text(AppStrings.t("up_downloading") + " v" + st.info.version + "… " + st.progress + "%")
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(progress = { st.progress / 100f }, Modifier.fillMaxWidth())
                 }
@@ -267,24 +267,24 @@ fun SettingsScreen(
         )
         is UpdateCheckState.ReadyToInstall -> AlertDialog(
             onDismissRequest = { updateState = UpdateCheckState.Idle },
-            title = { Text("v${st.version} 下载完成") },
+            title = { Text("v" + st.version + " " + AppStrings.t("up_downloading")) },
             text = {
                 Column {
-                    Text("现在安装？")
+                    Text(AppStrings.t("up_install_now_q"))
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { openInFileManager(st) }) { Text("用文件管理器安装") }
+                    TextButton(onClick = { openInFileManager(st) }) { Text(AppStrings.t("up_open_fm")) }
                     Text(
-                        "若安装被系统拦截：APK 会同时存到 Download 目录，可用文件管理器/快速访问安装",
+                        AppStrings.t("up_note"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { installUpdate(st.file, st.version) }) { Text("立即安装") }
+                TextButton(onClick = { installUpdate(st.file, st.version) }) { Text(AppStrings.t("up_install_now")) }
             },
             dismissButton = {
-                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text("取消") }
+                TextButton(onClick = { updateState = UpdateCheckState.Idle }) { Text(AppStrings.t("cancel")) }
             }
         )
         is UpdateCheckState.Failed -> AlertDialog(

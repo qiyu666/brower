@@ -203,7 +203,7 @@ private fun DownloadItemRow(
         if (canRetry) {
             IconButton(onClick = onRetry, modifier = Modifier.size(24.dp)) {
                 Icon(
-                    Icons.Filled.Redo, "重试",
+                    Icons.Filled.Redo, AppStrings.t("retry"),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )

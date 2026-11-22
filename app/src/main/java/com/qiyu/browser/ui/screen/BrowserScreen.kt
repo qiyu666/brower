@@ -46,7 +46,10 @@ import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.qiyu.browser.model.HistoryItem
 import com.qiyu.browser.ui.component.AddressBar
@@ -82,6 +85,8 @@ fun BrowserScreen(
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val favBookmarks by bookmarksVM.bookmarks.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showTrafficDialog by remember { mutableStateOf(false) }
@@ -95,6 +100,12 @@ fun BrowserScreen(
     var prevTabId by remember { mutableStateOf<Int?>(null) }
     val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDark = when (config.darkMode) {
+        "dark" -> true
+        "light" -> false
+        else -> systemDark
+    }
 
     Box(modifier) {
     Column(
@@ -179,10 +190,11 @@ fun BrowserScreen(
                     tabsVM.setTabLoading(tab.id, true)
                 },
                 onBookmarkToggle = {
+                    val url = tab.url
                     if (isBookmarked) {
-                        // Simplified: just toggle state
+                        bookmarksVM.removeByURL(url)
                     } else {
-                        bookmarksVM.addBookmark(tab.title.ifEmpty { WebUtils.extractDomain(tab.url) }, tab.url)
+                        bookmarksVM.addBookmark(tab.title.ifEmpty { WebUtils.extractDomain(url) }, url)
                     }
                 },
                 modifier = Modifier
@@ -228,7 +240,9 @@ fun BrowserScreen(
                         }
                     },
                     searchEngine = config.searchEngine,
-                    recentItems = recentItems
+                    recentItems = recentItems,
+                    favorites = favBookmarks,
+                    isDark = isDark
                 )
             } else {
                 AndroidView(
@@ -268,12 +282,6 @@ fun BrowserScreen(
     }
 
     // Apply dark mode to all WebViews when it changes
-    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val isDark = when (config.darkMode) {
-        "dark" -> true
-        "light" -> false
-        else -> systemDark
-    }
     LaunchedEffect(isDark) {
         webManager.applyDarkMode(isDark)
     }
@@ -329,6 +337,15 @@ fun BrowserScreen(
                     }
                 }
             },
+            onCloseAll = {
+                val ids = tabsVM.tabs.value.map { it.id }
+                ids.forEach { id -> webManager.destroyWebView(id) }
+                tabsVM.closeAllTabs()
+                val tabId = tabsVM.addTab()
+                webManager.createWebView(tabId, false)
+                webManager.showTab(tabId)
+                showTabSwitcher = false
+            },
             onNewTab = {
                 val tabId = tabsVM.addTab()
                 webManager.createWebView(tabId, false)
@@ -345,7 +362,7 @@ fun BrowserScreen(
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
-            title = { Text("清理浏览数据") },
+            title = { Text(AppStrings.t("clear_data_title")) },
             text = {
                 Column {
                     Row(
@@ -356,7 +373,7 @@ fun BrowserScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = clearSelHistory, onCheckedChange = { clearSelHistory = it })
-                        Text("浏览历史", modifier = Modifier.weight(1f))
+                        Text(AppStrings.t("data_history"), modifier = Modifier.weight(1f))
                     }
                     Row(
                         Modifier
@@ -366,7 +383,7 @@ fun BrowserScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = clearSelCookies, onCheckedChange = { clearSelCookies = it })
-                        Text("Cookie 与站点数据", modifier = Modifier.weight(1f))
+                        Text(AppStrings.t("data_cookies"), modifier = Modifier.weight(1f))
                     }
                     Row(
                         Modifier
@@ -376,7 +393,7 @@ fun BrowserScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = clearSelCache, onCheckedChange = { clearSelCache = it })
-                        Text("缓存", modifier = Modifier.weight(1f))
+                        Text(AppStrings.t("data_cache"), modifier = Modifier.weight(1f))
                     }
                 }
             },
@@ -384,10 +401,10 @@ fun BrowserScreen(
                 TextButton(onClick = {
                     onClearData(clearSelHistory, clearSelCookies, clearSelCache)
                     showClearDataDialog = false
-                }) { Text("清理", color = MaterialTheme.colorScheme.primary) }
+                }) { Text(AppStrings.t("clear"), color = MaterialTheme.colorScheme.primary) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDataDialog = false }) { Text("取消") }
+                TextButton(onClick = { showClearDataDialog = false }) { Text(AppStrings.t("cancel")) }
             }
         )
     }
@@ -462,6 +479,22 @@ fun BrowserScreen(
                     onDev = {
                         showMenu = false
                         onDev()
+                    },
+                    onCopyLink = {
+                        activeTab?.let { tab ->
+                            if (tab.url.isNotEmpty() && tab.url != "about:blank") {
+                                val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                                if (cm != null) {
+                                    cm.setPrimaryClip(android.content.ClipData.newPlainText(tab.title, tab.url))
+                                }
+                                android.widget.Toast.makeText(context, AppStrings.t("link_copied"), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showMenu = false
+                    },
+                    onDesktopMode = {
+                        settingsVM.setUseDesktopMode(!config.useDesktopMode)
+                        showMenu = false
                     }
                 )
             }
@@ -474,19 +507,19 @@ fun BrowserScreen(
         val pageBytes = tab?.let { webManager.currentPageBytes(it.id) } ?: 0L
         AlertDialog(
             onDismissRequest = { showTrafficDialog = false },
-            title = { Text("流量统计") },
+            title = { Text(AppStrings.t("traffic_title")) },
             text = {
                 Column {
-                    Text("当前页面：${WebUtils.formatFileSize(pageBytes)}", style = MaterialTheme.typography.bodyMedium)
+                    Text(AppStrings.t("traffic_page") + "：" + WebUtils.formatFileSize(pageBytes), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
-                    Text("本次会话累计：${WebUtils.formatFileSize(webManager.sessionBytesTotal())}", style = MaterialTheme.typography.bodyMedium)
+                    Text(AppStrings.t("traffic_session") + "：" + WebUtils.formatFileSize(webManager.sessionBytesTotal()), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
-                    Text("统计主框架加载的字节数，不含缓存命中", style = MaterialTheme.typography.labelSmall,
+                    Text(AppStrings.t("traffic_note"), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showTrafficDialog = false }) { Text("知道了") }
+                TextButton(onClick = { showTrafficDialog = false }) { Text(AppStrings.t("done")) }
             }
         )
     }
@@ -499,6 +532,7 @@ fun TabSwitcherOverlay(
     activeTabId: Int?,
     onSelect: (Int) -> Unit,
     onClose: (Int) -> Unit,
+    onCloseAll: () -> Unit,
     onNewTab: () -> Unit,
     onDismiss: () -> Unit,
     getThumbnail: (Int) -> android.graphics.Bitmap?,
@@ -519,13 +553,21 @@ fun TabSwitcherOverlay(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "标签页 (${tabs.size})",
+                AppStrings.t("tabs_header") + " (" + tabs.size + ")",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Text(
+                AppStrings.t("close_all"),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .clickable { onCloseAll() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, "关闭", tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Icons.Default.Close, AppStrings.t("close"), tint = MaterialTheme.colorScheme.onSurface)
             }
         }
 
@@ -597,7 +639,9 @@ private fun OverflowMenuSheet(
     onTraffic: () -> Unit,
     onScanQr: () -> Unit,
     onClearData: () -> Unit,
-    onDev: () -> Unit
+    onDev: () -> Unit,
+    onCopyLink: () -> Unit,
+    onDesktopMode: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -616,9 +660,9 @@ private fun OverflowMenuSheet(
         )
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Star, "书签", accent = true, modifier = Modifier.weight(1f), onClick = onBookmarks)
-            GridMenuItem(Icons.Filled.History, "历史记录", accent = true, modifier = Modifier.weight(1f), onClick = onHistory)
-            GridMenuItem(Icons.Filled.Download, "下载", accent = true, modifier = Modifier.weight(1f), onClick = onDownloads)
+            GridMenuItem(Icons.Filled.Star, AppStrings.t("bookmarks"), accent = true, modifier = Modifier.weight(1f), onClick = onBookmarks)
+            GridMenuItem(Icons.Filled.History, AppStrings.t("history"), accent = true, modifier = Modifier.weight(1f), onClick = onHistory)
+            GridMenuItem(Icons.Filled.Download, AppStrings.t("downloads"), accent = true, modifier = Modifier.weight(1f), onClick = onDownloads)
         }
         Spacer(Modifier.height(12.dp))
         // 分隔线
@@ -631,16 +675,22 @@ private fun OverflowMenuSheet(
         )
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Face, "私密模式", modifier = Modifier.weight(1f), onClick = onIncognito)
-            GridMenuItem(Icons.Filled.Settings, "设置", modifier = Modifier.weight(1f), onClick = onSettings)
-            GridMenuItem(Icons.Filled.Code, "开发者", modifier = Modifier.weight(1f), onClick = onDev)
-            GridMenuItem(Icons.Filled.Share, "分享", modifier = Modifier.weight(1f), onClick = onShare)
+            GridMenuItem(Icons.Filled.Face, AppStrings.t("incognito"), modifier = Modifier.weight(1f), onClick = onIncognito)
+            GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.weight(1f), onClick = onSettings)
+            GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.weight(1f), onClick = onDev)
+            GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.weight(1f), onClick = onShare)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.DataUsage, "流量", modifier = Modifier.weight(1f), onClick = onTraffic)
-            GridMenuItem(Icons.Filled.QrCode, "扫码", modifier = Modifier.weight(1f), onClick = onScanQr)
-            GridMenuItem(Icons.Filled.CleaningServices, "清理数据", modifier = Modifier.weight(1f), onClick = onClearData)
+            GridMenuItem(Icons.Filled.DataUsage, AppStrings.t("traffic"), modifier = Modifier.weight(1f), onClick = onTraffic)
+            GridMenuItem(Icons.Filled.QrCode, AppStrings.t("scan_qr"), modifier = Modifier.weight(1f), onClick = onScanQr)
+            GridMenuItem(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), modifier = Modifier.weight(1f), onClick = onClearData)
+            GridMenuItem(Icons.Filled.Link, AppStrings.t("copy_link"), modifier = Modifier.weight(1f), onClick = onCopyLink)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.weight(1f), onClick = onDesktopMode)
+            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -738,7 +788,7 @@ private fun TabCard2(
             Spacer(Modifier.width(6.dp))
             if (tab.isIncognito) {
                 Text(
-                    text = "\u9690\u8eab",
+                    text = AppStrings.t("incognito"),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF9E9E9E),
                     fontSize = 10.sp
