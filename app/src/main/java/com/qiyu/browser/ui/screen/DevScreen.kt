@@ -1,6 +1,7 @@
 package com.qiyu.browser.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -164,7 +165,7 @@ private fun NetworkPanel(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             TYPE_FILTERS.forEach { f ->
-                AssistChip(
+                FilterChip(
                     selected = typeFilter == f.id,
                     onClick = { onTypeFilter(f.id) },
                     label = { Text(f.label, style = MaterialTheme.typography.labelSmall) }
@@ -261,28 +262,31 @@ private fun typeBadgeColor(type: String): Color = when (type) {
 
 @Composable
 private fun NetRow(entry: WebViewManager.DevNetEntry, onClick: () -> Unit) {
-    ListItem(
-        modifier = Modifier.fillMaxWidth(),
-        headlineContent = {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(Modifier.weight(1f)) {
             Text(
                 netName(entry.url),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
+                overflow = TextOverflow.Ellipsis
             )
-        },
-        supportingContent = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     if (entry.main) "主文档" else entry.type,
                     style = MaterialTheme.typography.labelSmall,
                     color = typeBadgeColor(entry.type)
                 )
-                if (entry.reqHeaders.isNotEmpty()) {
-                    Text(entry.method, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                }
+                Text(
+                    entry.method,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
                 Text(
                     entry.url,
                     style = MaterialTheme.typography.labelSmall,
@@ -292,37 +296,34 @@ private fun NetRow(entry: WebViewManager.DevNetEntry, onClick: () -> Unit) {
                     modifier = Modifier.weight(1f, fill = false)
                 )
             }
-        },
-        trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                entry.statusText,
+                style = MaterialTheme.typography.labelMedium,
+                color = statusColor(entry.statusText)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    entry.statusText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = statusColor(entry.statusText)
+                    fmtBytes(entry.size),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (entry.elapsedMs >= 0) {
                     Text(
-                        fmtBytes(entry.size),
+                        if (entry.elapsedMs < 1000) "${entry.elapsedMs}ms" else "%.1fs".format(entry.elapsedMs / 1000.0),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
-                    if (entry.elapsedMs >= 0) {
-                        Text(
-                            if (entry.elapsedMs < 1000) "${entry.elapsedMs}ms" else "%.1fs".format(entry.elapsedMs / 1000.0),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    }
                 }
-                Text(
-                    entry.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-                )
             }
-        },
-        onClick = onClick
-    )
+            Text(
+                entry.time,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+            )
+        }
+    }
 }
 
 @Composable

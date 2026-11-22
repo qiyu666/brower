@@ -245,7 +245,7 @@ class WebViewManager(
         } catch (e: Exception) {
             return "（二进制，${fmtBytes(bytes.size.toLong())}）"
         }
-        val clean = s.map { if (it.isPrintable() || it == '\n' || it == '\t') it else '·' }.toString()
+        val clean = s.map { c -> if (c in '\u0020'..'~' || c == '\n' || c == '\t') c else '·' }.toString()
         val body: String = if (contentType.lowercase().startsWith("application/json")) {
             try { org.json.JSONObject(clean).toString(2) } catch (e: Exception) { clean }
         } else {
@@ -635,8 +635,11 @@ class WebViewManager(
                         val t0 = android.os.SystemClock.elapsedRealtime()
                         val method = request.method ?: "GET"
                         val reqHeaders = HashMap<String, String>()
-                        request.requestHeaders?.entries?.forEach { e ->
-                            if (e.key != null) reqHeaders[e.key] = e.value?.toString() ?: ""
+                        val rm = request.requestHeaders
+                        if (rm != null) {
+                            for (k in rm.keys) {
+                                reqHeaders[k] = rm[k]?.toString() ?: ""
+                            }
                         }
                         try {
                             // 反射调用：当前编译环境对 WebView.fetch 静态方法符号解析不可靠
@@ -647,7 +650,10 @@ class WebViewManager(
                             if (resp != null) {
                                 val elapsed = android.os.SystemClock.elapsedRealtime() - t0
                                 val headers = resp.responseHeaders ?: emptyMap<String, List<String>>()
-                                val flatHeaders = headers.entries.associate { it.key to it.value.joinToString(", ") }
+                                val flatHeaders = HashMap<String, String>()
+                                for (kv in headers.entries) {
+                                    flatHeaders[kv.key] = kv.value.joinToString(", ")
+                                }
                                 val ctype = resp.mimeType ?: ""
                                 val clen = (flatHeaders["Content-Length"] ?: flatHeaders["content-length"])?.toLongOrNull()
                                 val type = classifyNetType(request.url.toString(), ctype)
