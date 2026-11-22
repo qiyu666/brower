@@ -254,7 +254,13 @@ class WebViewManager(
             webViewClient = createWebViewClient(tabId)
             webChromeClient = createWebChromeClient(tabId)
             // 隐藏内建缩放胶囊（挡页面且丑），缩放统一走菜单「缩放」档位；双指缩放仍可用。
-            // 反射调用：当前编译环境解析不到 setZoomControlsEnabled
+            // 胶囊显示由 setDisplayZoomControls 控制（新 WebView）；setZoomControlsEnabled 仅管旧版按钮，两者都关。
+            // 反射调用：当前编译环境解析不到这两个方法
+            try {
+                WebSettings::class.java
+                    .getMethod("setDisplayZoomControls", java.lang.Boolean::class.javaPrimitiveType)
+                    .invoke(settings, false)
+            } catch (e: Exception) {}
             try {
                 WebSettings::class.java
                     .getMethod("setZoomControlsEnabled", java.lang.Boolean::class.javaPrimitiveType)
