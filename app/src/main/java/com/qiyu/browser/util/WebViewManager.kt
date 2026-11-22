@@ -125,14 +125,22 @@ class WebViewManager(
         lastPageBytes[tabId] = 0L
     }
 
-    // ---- 开发者面板：网络记录 / 控制台 / 远程调试 ----
+    // ---- 开发者面板：网络记录（Edge 式完整抓取：状态/类型/大小/耗时/请求响应头/响应预览）/ 控制台 / 远程调试 ----
 
     data class DevNetEntry(
         val time: String,
+        val tabId: Int,
         val main: Boolean,
+        val method: String,
         val url: String,
-        val status: String,
-        val size: String
+        val status: Int,          // 0 = error/未完成
+        val statusText: String,   // "200" / "error" / "–"
+        val type: String,         // doc/xhr/js/css/img/font/media/other
+        val size: Long,           // -1 未知
+        val elapsedMs: Long,      // -1 未知
+        val reqHeaders: Map<String, String>,
+        val resHeaders: Map<String, String>,
+        val preview: String
     )
 
     data class DevConsoleEntry(
@@ -157,26 +165,93 @@ class WebViewManager(
 
     fun addDevNet(main: Boolean, url: String, status: String, sizeBytes: Long? = null) {
         val sizeStr = if (sizeBytes == null) "" else fmtBytes(sizeBytes)
-        val entry = DevNetEntry(nowHms(), main, url, status, sizeStr)
+        val entry = DevNetEntry(nowHms(), 0, main, "GET", url, status.toIntOrNull() ?: 0, status, "other", sizeBytes ?: -1L, -1L, emptyMap(), emptyMap(), "")
         synchronized(netLog) {
             netLog.addLast(entry)
             while (netLog.size > 300) netLog.removeFirst()
         }
     }
 
-    /** 子资源收到 HTTP 错误：把最近一条同 url 且未完成（status="–"）的记录改为错误码 */
+    /** Edge 式完整记录：一次请求的全部维度（拦截捕获路径用） */
+    fun addDevNetFull(
+        tabId: Int,
+        main: Boolean,
+        method: String,
+        url: String,
+        status: Int,
+        type: String,
+        size: Long,
+        elapsedMs: Long,
+        reqHeaders: Map<String, String>,
+        resHeaders: Map<String, String>,
+        preview: String
+    ) {
+        val st = if (status > 0) status.toString() else if (status == 0 && url.isNotEmpty()) "–" else "error"
+        val entry = DevNetEntry(nowHms(), tabId, main, method, url, status, st, type, size, elapsedMs, reqHeaders, resHeaders, preview)
+        synchronized(netLog) {
+            netLog.addLast(entry)
+            while (netLog.size > 400) netLog.removeFirst()
+        }
+    }
+
+    /** 子资源收到 HTTP 错误：把最近一条同 url 且未完成（statusText="–"）的记录改为错误码 */
     fun failDevNet(url: String, code: Int) {
         synchronized(netLog) {
             var i = netLog.size - 1
             while (i >= 0) {
                 val e = netLog[i]
-                if (e.url == url && e.status == "–") {
-                    netLog[i] = e.copy(status = code.toString())
+                if (e.url == url && e.statusText == "–") {
+                    netLog[i] = e.copy(status = code, statusText = code.toString())
                     break
                 }
                 i--
             }
         }
+    }
+
+    /** 类型分类：Content-Type 优先，URL 扩展名兜底（同 Edge Network 的图标分类） */
+    private fun classifyNetType(url: String, contentType: String): String {
+        val c = contentType.lowercase()
+        if (c.isNotEmpty()) {
+            when {
+                c.startsWith("text/html") -> return "doc"
+                c.startsWith("application/json") || c.startsWith("text/json") -> return "xhr"
+                c.contains("javascript") -> return "js"
+                c.startsWith("text/css") -> return "css"
+                c.startsWith("image/") -> return "img"
+                c.contains("font") -> return "font"
+                c.startsWith("video/") || c.startsWith("audio/") -> return "media"
+                c.startsWith("application/xml") || c.contains("xml") -> return "xhr"
+            }
+        }
+        val u = url.substringBefore("?").lowercase()
+        return when {
+            u.endsWith(".js") || u.endsWith(".mjs") -> "js"
+            u.endsWith(".css") -> "css"
+            u.endsWith(".png") || u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".gif") || u.endsWith(".webp") || u.endsWith(".svg") || u.endsWith(".avif") -> "img"
+            u.endsWith(".woff") || u.endsWith(".woff2") || u.endsWith(".ttf") || u.endsWith(".otf") -> "font"
+            u.endsWith(".mp4") || u.endsWith(".webm") || u.endsWith(".m4v") || u.endsWith(".mp3") || u.endsWith(".m4a") || u.endsWith(".ogg") || u.endsWith(".flac") -> "media"
+            u.endsWith(".json") || u.endsWith(".xml") -> "xhr"
+            u.endsWith(".html") || u.endsWith(".htm") -> "doc"
+            else -> "other"
+        }
+    }
+
+    /** 文本预览：截断到 cap 字符；JSON 美化；不可打印字符替换 */
+    private fun makePreview(bytes: ByteArray, contentType: String, cap: Int = 8192): String {
+        if (bytes.isEmpty()) return "（空响应）"
+        val s = try {
+            String(bytes, java.nio.charset.StandardCharsets.UTF_8)
+        } catch (e: Exception) {
+            return "（二进制，${fmtBytes(bytes.size.toLong())}）"
+        }
+        val clean = s.map { if (it.isPrintable() || it == '\n' || it == '\t') it else '·' }.toString()
+        val body: String = if (contentType.lowercase().startsWith("application/json")) {
+            try { org.json.JSONObject(clean).toString(2) } catch (e: Exception) { clean }
+        } else {
+            clean
+        }
+        return if (body.length > cap) body.substring(0, cap) + "\n…（截断，共 ${fmtBytes(bytes.size.toLong())}）" else body
     }
 
     fun addDevConsole(level: String, message: String, source: String) {
@@ -508,6 +583,7 @@ class WebViewManager(
                 if (request.isForMainFrame) {
                     val scheme = request.url?.scheme
                     if (scheme == "http" || scheme == "https") {
+                        val t0Main = android.os.SystemClock.elapsedRealtime()
                         try {
                             val url = java.net.URL(request.url.toString())
                             val conn = url.openConnection() as java.net.HttpURLConnection
@@ -520,6 +596,7 @@ class WebViewManager(
                             val cm = android.webkit.CookieManager.getInstance()
                             cm.getCookie(url.toString())?.let { conn.setRequestProperty("Cookie", it) }
                             conn.connect()
+                            val resHeaders = HashMap<String, String>()
                             conn.headerFields.entries.forEach { entry ->
                                 val key = entry.key ?: return@forEach
                                 val vals = entry.value
@@ -527,20 +604,24 @@ class WebViewManager(
                                     val setCookie = key.lowercase()
                                     if (setCookie == "set-cookie" || setCookie == "set-cookie2") {
                                         vals.forEach { sc -> cm.setCookie(url.toString(), sc) }
+                                    } else {
+                                        resHeaders[key] = vals.joinToString(", ")
                                     }
                                 }
                             }
                             cm.flush()
                             val bytes = conn.inputStream.readBytes()
                             lastPageBytes[tabId] = bytes.size.toLong()
-                            addDevNet(true, url.toString(), conn.responseCode.toString(), bytes.size.toLong())
+                            val ctype = conn.contentType ?: "text/html"
+                            val preview = if (ctype.startsWith("text/") || ctype.contains("json") || ctype.contains("xml")) makePreview(bytes, ctype) else "（二进制，${fmtBytes(bytes.size.toLong())}）"
+                            addDevNetFull(tabId, true, request.method ?: "GET", url.toString(), conn.responseCode, classifyNetType(url.toString(), ctype), bytes.size.toLong(), android.os.SystemClock.elapsedRealtime() - t0Main, emptyMap(), resHeaders, preview)
                             return android.webkit.WebResourceResponse(
-                                conn.contentType ?: "text/html",
+                                ctype,
                                 "UTF-8",
                                 java.io.ByteArrayInputStream(bytes)
                             )
                         } catch (e: Exception) {
-                            addDevNet(true, request.url?.toString() ?: "", "error")
+                            addDevNetFull(tabId, true, request.method ?: "GET", request.url?.toString() ?: "", 0, "doc", -1L, -1L, emptyMap(), emptyMap(), "（主文档加载失败：${e.message?.take(80) ?: "error"}）")
                             return null
                         }
                     } else {
@@ -548,8 +629,56 @@ class WebViewManager(
                         addDevNet(true, request.url?.toString() ?: "", "–")
                     }
                 } else {
-                    // 子资源：只记请求，后续错误码由 onReceivedHttpError 补上
-                    addDevNet(false, request.url?.toString() ?: "", "–")
+                    // 子资源：WebView.fetch 拦截抓取完整响应（状态码/响应头/大小/耗时），回传给 WebView
+                    val scheme = request.url?.scheme
+                    if (scheme == "http" || scheme == "https") {
+                        val t0 = android.os.SystemClock.elapsedRealtime()
+                        val method = request.method ?: "GET"
+                        val reqHeaders = HashMap<String, String>()
+                        request.requestHeaders?.entries?.forEach { e ->
+                            if (e.key != null) reqHeaders[e.key] = e.value?.toString() ?: ""
+                        }
+                        try {
+                            // 反射调用：当前编译环境对 WebView.fetch 静态方法符号解析不可靠
+                            val fetcher = android.webkit.WebView::class.java
+                                .getMethod("fetch", android.net.Uri::class.java)
+                                .invoke(null, request.url)
+                            val resp = fetcher.javaClass.getMethod("execute").invoke(fetcher) as? android.webkit.WebResourceResponse
+                            if (resp != null) {
+                                val elapsed = android.os.SystemClock.elapsedRealtime() - t0
+                                val headers = resp.responseHeaders ?: emptyMap<String, List<String>>()
+                                val flatHeaders = headers.entries.associate { it.key to it.value.joinToString(", ") }
+                                val ctype = resp.mimeType ?: ""
+                                val clen = (flatHeaders["Content-Length"] ?: flatHeaders["content-length"])?.toLongOrNull()
+                                val type = classifyNetType(request.url.toString(), ctype)
+                                val isText = ctype.startsWith("text/") || ctype.contains("json") || ctype.contains("xml")
+                                when {
+                                    // 文本类且 Content-Length 已知且 ≤512KB：读全量（预览 + 精确大小），重建响应
+                                    isText && clen != null && clen in 0..524_288 -> {
+                                        val bytes = resp.data.readBytes()
+                                        addDevNetFull(tabId, false, method, request.url.toString(), resp.statusCode, type, bytes.size.toLong(), elapsed, reqHeaders, flatHeaders, makePreview(bytes, ctype))
+                                        val rebuilt = android.webkit.WebResourceResponse(resp.mimeType ?: "application/octet-stream", resp.encoding ?: "UTF-8", java.io.ByteArrayInputStream(bytes))
+                                        val rh = flatHeaders.toMutableMap()
+                                        rh["Content-Length"] = bytes.size.toString()
+                                        rebuilt.responseHeaders = rh
+                                        return rebuilt
+                                    }
+                                    else -> {
+                                        val sizeNote = if (clen != null) "，${fmtBytes(clen)}" else ""
+                                        val preview = if (isText) "（未读取响应流，仅记录头部）" else "（二进制${sizeNote}）"
+                                        addDevNetFull(tabId, false, method, request.url.toString(), resp.statusCode, type, (clen ?: -1L), elapsed, reqHeaders, flatHeaders, preview)
+                                        return resp
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // 抓取失败：记一条 error，回 null 让 WebView 自己加载（不破坏页面）
+                            addDevNetFull(tabId, false, method, request.url.toString(), 0, "other", -1L, android.os.SystemClock.elapsedRealtime() - t0, reqHeaders, emptyMap(), "（抓取失败：${e.message?.take(80) ?: "error"}）")
+                        }
+                        return null
+                    }
+                    // file/about 等非 http 子资源：只记一条占位
+                    addDevNetFull(tabId, false, request.method ?: "GET", request.url?.toString() ?: "", 0, "other", -1L, -1L, emptyMap(), emptyMap(), "")
                 }
                 return null
             }
