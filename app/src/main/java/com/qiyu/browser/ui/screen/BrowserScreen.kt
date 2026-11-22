@@ -674,7 +674,7 @@ private fun OverflowMenuSheet(
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
         )
         Spacer(Modifier.height(12.dp))
-        // 常规操作：横向可滑动，超出屏宽右滑查看（含电脑版）
+        // 常规操作第一行：一屏 4 个，右滑看第 5 个（电脑版）
         androidx.compose.foundation.lazy.LazyRow(
             Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 20.dp),
@@ -684,11 +684,19 @@ private fun OverflowMenuSheet(
             item { GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.width(64.dp), onClick = onSettings) }
             item { GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.width(64.dp), onClick = onDev) }
             item { GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.width(64.dp), onClick = onShare) }
+            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
+        }
+        Spacer(Modifier.height(4.dp))
+        // 常规操作第二行：流量/扫码/清理数据/复制链接
+        androidx.compose.foundation.lazy.LazyRow(
+            Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             item { GridMenuItem(Icons.Filled.DataUsage, AppStrings.t("traffic"), modifier = Modifier.width(64.dp), onClick = onTraffic) }
             item { GridMenuItem(Icons.Filled.QrCode, AppStrings.t("scan_qr"), modifier = Modifier.width(64.dp), onClick = onScanQr) }
             item { GridMenuItem(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), modifier = Modifier.width(64.dp), onClick = onClearData) }
             item { GridMenuItem(Icons.Filled.Link, AppStrings.t("copy_link"), modifier = Modifier.width(64.dp), onClick = onCopyLink) }
-            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
         }
     }
 }
