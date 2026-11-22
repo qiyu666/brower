@@ -674,23 +674,25 @@ private fun OverflowMenuSheet(
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
         )
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Face, AppStrings.t("incognito"), modifier = Modifier.weight(1f), onClick = onIncognito)
-            GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.weight(1f), onClick = onSettings)
-            GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.weight(1f), onClick = onDev)
-            GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.weight(1f), onClick = onShare)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.DataUsage, AppStrings.t("traffic"), modifier = Modifier.weight(1f), onClick = onTraffic)
-            GridMenuItem(Icons.Filled.QrCode, AppStrings.t("scan_qr"), modifier = Modifier.weight(1f), onClick = onScanQr)
-            GridMenuItem(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), modifier = Modifier.weight(1f), onClick = onClearData)
-            GridMenuItem(Icons.Filled.Link, AppStrings.t("copy_link"), modifier = Modifier.weight(1f), onClick = onCopyLink)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.weight(1f), onClick = onDesktopMode)
-            Spacer(Modifier.weight(1f))
+        // 常规操作：横向可滑动，超出屏宽右滑查看（含电脑版）
+        androidx.compose.foundation.lazy.LazyRow(
+            Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.foundation.lazy.items(listOf(
+                Triple(Icons.Filled.Face, AppStrings.t("incognito"), onIncognito),
+                Triple(Icons.Filled.Settings, AppStrings.t("settings"), onSettings),
+                Triple(Icons.Filled.Code, AppStrings.t("dev_tools"), onDev),
+                Triple(Icons.Filled.Share, AppStrings.t("share"), onShare),
+                Triple(Icons.Filled.DataUsage, AppStrings.t("traffic"), onTraffic),
+                Triple(Icons.Filled.QrCode, AppStrings.t("scan_qr"), onScanQr),
+                Triple(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), onClearData),
+                Triple(Icons.Filled.Link, AppStrings.t("copy_link"), onCopyLink),
+                Triple(Icons.Filled.Computer, AppStrings.t("desktop_mode"), onDesktopMode)
+            )) { cell ->
+                GridMenuItem(cell.first, cell.second, modifier = Modifier.width(64.dp), onClick = cell.third)
+            }
         }
     }
 }
