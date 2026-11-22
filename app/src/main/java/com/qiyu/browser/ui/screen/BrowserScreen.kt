@@ -495,7 +495,8 @@ fun BrowserScreen(
                     onDesktopMode = {
                         settingsVM.setUseDesktopMode(!config.useDesktopMode)
                         showMenu = false
-                    }
+                    },
+                    desktopActive = config.useDesktopMode
                 )
             }
         }
@@ -641,7 +642,8 @@ private fun OverflowMenuSheet(
     onClearData: () -> Unit,
     onDev: () -> Unit,
     onCopyLink: () -> Unit,
-    onDesktopMode: () -> Unit
+    onDesktopMode: () -> Unit,
+    desktopActive: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -684,7 +686,7 @@ private fun OverflowMenuSheet(
             item { GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.width(64.dp), onClick = onSettings) }
             item { GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.width(64.dp), onClick = onDev) }
             item { GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.width(64.dp), onClick = onShare) }
-            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
+            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), accent = desktopActive, modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
         }
         Spacer(Modifier.height(4.dp))
         // 常规操作第二行：流量/扫码/清理数据/复制链接
