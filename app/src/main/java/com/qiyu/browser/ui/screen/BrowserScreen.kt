@@ -680,19 +680,15 @@ private fun OverflowMenuSheet(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            androidx.compose.foundation.lazy.items(listOf(
-                Triple(Icons.Filled.Face, AppStrings.t("incognito"), onIncognito),
-                Triple(Icons.Filled.Settings, AppStrings.t("settings"), onSettings),
-                Triple(Icons.Filled.Code, AppStrings.t("dev_tools"), onDev),
-                Triple(Icons.Filled.Share, AppStrings.t("share"), onShare),
-                Triple(Icons.Filled.DataUsage, AppStrings.t("traffic"), onTraffic),
-                Triple(Icons.Filled.QrCode, AppStrings.t("scan_qr"), onScanQr),
-                Triple(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), onClearData),
-                Triple(Icons.Filled.Link, AppStrings.t("copy_link"), onCopyLink),
-                Triple(Icons.Filled.Computer, AppStrings.t("desktop_mode"), onDesktopMode)
-            )) { cell ->
-                GridMenuItem(cell.first, cell.second, modifier = Modifier.width(64.dp), onClick = cell.third)
-            }
+            item { GridMenuItem(Icons.Filled.Face, AppStrings.t("incognito"), modifier = Modifier.width(64.dp), onClick = onIncognito) }
+            item { GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.width(64.dp), onClick = onSettings) }
+            item { GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.width(64.dp), onClick = onDev) }
+            item { GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.width(64.dp), onClick = onShare) }
+            item { GridMenuItem(Icons.Filled.DataUsage, AppStrings.t("traffic"), modifier = Modifier.width(64.dp), onClick = onTraffic) }
+            item { GridMenuItem(Icons.Filled.QrCode, AppStrings.t("scan_qr"), modifier = Modifier.width(64.dp), onClick = onScanQr) }
+            item { GridMenuItem(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), modifier = Modifier.width(64.dp), onClick = onClearData) }
+            item { GridMenuItem(Icons.Filled.Link, AppStrings.t("copy_link"), modifier = Modifier.width(64.dp), onClick = onCopyLink) }
+            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
         }
     }
 }
