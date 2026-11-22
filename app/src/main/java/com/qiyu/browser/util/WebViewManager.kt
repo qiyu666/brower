@@ -635,13 +635,9 @@ class WebViewManager(
                         val t0 = android.os.SystemClock.elapsedRealtime()
                         val method = request.method ?: "GET"
                         val reqHeaders = HashMap<String, String>()
-                        val rm: java.util.Map<String, Any>? = request.requestHeaders
-                        if (rm != null) {
-                            val rit = rm.entrySet().iterator()
-                            while (rit.hasNext()) {
-                                val re = rit.next()
-                                reqHeaders[re.getKey()] = re.getValue().toString()
-                            }
+                        request.requestHeaders?.entries?.forEach { entry ->
+                            val k = entry.key
+                            if (k != null) reqHeaders[k] = entry.value?.toString() ?: ""
                         }
                         try {
                             // 反射调用：当前编译环境对 WebView.fetch 静态方法符号解析不可靠
@@ -651,13 +647,11 @@ class WebViewManager(
                             val resp = fetcher.javaClass.getMethod("execute").invoke(fetcher) as? android.webkit.WebResourceResponse
                             if (resp != null) {
                                 val elapsed = android.os.SystemClock.elapsedRealtime() - t0
-                                // Java Map 不走 entries/associate（编译环境推断缺陷），用 Java 迭代器
-                                val rh: java.util.Map<String, java.util.List<String>> = resp.responseHeaders ?: java.util.HashMap()
+                                // 响应头：Map<String,String>（单值），entries.forEach 是 CI 已验证的写法
                                 val flatHeaders = HashMap<String, String>()
-                                val hit = rh.entrySet().iterator()
-                                while (hit.hasNext()) {
-                                    val he = hit.next()
-                                    flatHeaders[he.getKey()] = he.getValue().joinToString(", ")
+                                resp.responseHeaders?.entries?.forEach { entry ->
+                                    val k = entry.key
+                                    if (k != null) flatHeaders[k] = entry.value?.toString() ?: ""
                                 }
                                 val ctype = resp.mimeType ?: ""
                                 val clen = (flatHeaders["Content-Length"] ?: flatHeaders["content-length"])?.toLongOrNull()
