@@ -453,6 +453,17 @@ fun SettingsScreen(
                 )
             }
 
+            // Security
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle(AppStrings.t("security"))
+            SettingRow(
+                icon = { Icon(Icons.Default.Key, "", modifier = Modifier.size(20.dp)) },
+                title = AppStrings.t("saved_passwords"),
+                value = ""
+            ) {
+                onNavigateToPasswords()
+            }
+
             // About
             Spacer(modifier = Modifier.height(16.dp))
             SectionTitle(AppStrings.t("about"))

@@ -409,6 +409,60 @@ fun BrowserScreen(
         )
     }
 
+    // 密码建议：保存 / 自动填充（webManager.onPasswordEvent 主线程回调）
+    var saveSug by remember { mutableStateOf<Triple<Int, String, String>?>(null) }
+    var fillSug by remember { mutableStateOf<Triple<Int, String, String>?>(null) }
+    LaunchedEffect(Unit) {
+        webManager.onPasswordEvent = { tabId, event, host, extra ->
+            when (event) {
+                "save" -> saveSug = Triple(tabId, host, extra)
+                "fill" -> fillSug = Triple(tabId, host, extra)
+            }
+        }
+    }
+    saveSug?.let { s ->
+        AlertDialog(
+            onDismissRequest = { webManager.discardSaveSuggestion(s.first); saveSug = null },
+            title = { Text(AppStrings.t("save_password")) },
+            text = {
+                Column {
+                    Text(AppStrings.t("website") + ": " + s.second)
+                    Text(AppStrings.t("username") + ": " + (if (s.third.isNotEmpty()) s.third else "—"))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { webManager.acceptSaveSuggestion(s.first); saveSug = null }) {
+                    Text(AppStrings.t("save"), color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { webManager.blockSaveForHost(s.first, s.second); saveSug = null }) {
+                        Text(AppStrings.t("never_save"))
+                    }
+                    TextButton(onClick = { webManager.discardSaveSuggestion(s.first); saveSug = null }) {
+                        Text(AppStrings.t("cancel"))
+                    }
+                }
+            }
+        )
+    }
+    fillSug?.let { f ->
+        AlertDialog(
+            onDismissRequest = { fillSug = null },
+            title = { Text(AppStrings.t("saved_password_found")) },
+            text = { Text((if (f.third.isNotEmpty()) f.third + " · " else "") + f.second) },
+            confirmButton = {
+                TextButton(onClick = { webManager.fillSavedPassword(f.first, f.second, f.third); fillSug = null }) {
+                    Text(AppStrings.t("auto_fill"), color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fillSug = null }) { Text(AppStrings.t("cancel")) }
+            }
+        )
+    }
+
     // 底部菜单抽屉：点 ⋮ 弹出（上滑动画 + 遮罩），点项或点遮罩/下滑关闭
     val sheetOffset by animateDpAsState(
         targetValue = if (showMenu) 0.dp else 520.dp,

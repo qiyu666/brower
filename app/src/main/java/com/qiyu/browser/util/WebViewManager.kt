@@ -35,6 +35,57 @@ class WebViewManager(
         private const val DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+        /** 登录表单捕获：表单提交时把用户名/密码传给 Java 桥（幂等，每页只装一次） */
+        private const val PASSWORD_CAPTURE_JS = """
+        (function(){
+          if (window.__qC) return; window.__qC = 1;
+          function passIn(f){
+            var ins = f.querySelectorAll('input[type=password]');
+            for (var i=0;i<ins.length;i++){ if (ins[i].value) return ins[i]; }
+            return null;
+          }
+          function userIn(f){
+            return f.querySelector('input[type=email],input[name*=user i],input[id*=user i],input[name*=login i],input[id*=login i],input[name*=account i],input[type=text]');
+          }
+          document.addEventListener('submit', function(e){
+            var f = e.target;
+            if (!f || f.tagName !== 'FORM') return;
+            var p = passIn(f);
+            if (!p) return;
+            try {
+              var u = userIn(f);
+              if (window.qiyuBridge) window.qiyuBridge.onPasswordSubmit(location.hostname, u ? (u.value||'') : '', p.value);
+            } catch (err) {}
+          }, true);
+        })();
+        """
+
+        /** 自动填充：React 友好的原生 value setter + input/change 事件 */
+        private const val FILL_JS_TEMPLATE = """
+        (function(){
+          function setV(el, v){
+            try {
+              var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+              if (d && d.set) { d.set.call(el, v); } else { el.value = v; }
+              el.dispatchEvent(new Event('input', {bubbles: true}));
+              el.dispatchEvent(new Event('change', {bubbles: true}));
+            } catch (e2) { el.value = v; }
+          }
+          var fields = document.querySelectorAll('input[type=password]');
+          var target = null;
+          for (var i = 0; i < fields.length; i++) { if (fields[i].offsetParent !== null) { target = fields[i]; break; } }
+          if (!target && fields.length > 0) target = fields[0];
+          if (!target) return;
+          var form = target.form;
+          var uin = null;
+          if (form) {
+            uin = form.querySelector('input[type=email],input[name*=user i],input[id*=user i],input[name*=login i],input[id*=login i],input[name*=account i],input[type=text]');
+          }
+          if (uin) setV(uin, __ARG_USER__);
+          setV(target, __ARG_PASS__);
+        })();
+        """
+
         /**
          * 页面下载触发时记录「blob/data URL → 锚点 download 属性名」快照。
          * 三层捕获：
@@ -109,6 +160,15 @@ class WebViewManager(
     private val favicons = mutableMapOf<Int, android.graphics.Bitmap>()
     /** 每个标签当前已应用的深色状态：导航往返导致 LaunchedEffect 重跑时，状态未变就跳过 applyDarkMode（不 reload） */
     private val tabDarkApplied = mutableMapOf<Int, Boolean>()
+
+    // ---- 保存密码 / 自动填充（Edge 级：Keystore AES-GCM 密文落盘，明文仅瞬态 char[] 用完即清） ----
+    val credentialStore: CredentialStore = CredentialStore.of(context)
+    /** 密码事件（主线程回调）：(tabId, "save"|"fill", host, username或数量) */
+    var onPasswordEvent: ((tabId: Int, event: String, host: String, extra: String) -> Unit)? = null
+    private val pendingSaves = HashMap<Int, CharArray>()
+    private val pendingMeta = HashMap<Int, Triple<String, String, String>>() // tabId -> (host, origin, username)
+    private val lastFillPrompt = HashMap<Int, String>()
+    private val saveBlockedHosts = HashSet<String>()
 
     // 流量统计：主文档走 HttpURLConnection 拦截计数（转发 Cookie 保持会话），
     // lastPageBytes=当前页已加载字节，sessionBytes=历史页累计
@@ -380,7 +440,103 @@ class WebViewManager(
             incognitoTabs.add(tabId)
             incognitoDomains[tabId] = mutableSetOf()
         }
+        // 密码捕获桥：页面表单提交时回调（非私密标签才启用）
+        webView.addJavascriptInterface(QiyuPassBridge(tabId), "qiyuBridge")
         return webView
+    }
+
+    /** JS 桥：捕获表单登录提交（只传值，不向页面暴露其它能力） */
+    private inner class QiyuPassBridge(private val tabId: Int) {
+        @android.webkit.JavascriptInterface
+        fun onPasswordSubmit(host: String, username: String, password: String) {
+            if (host.isEmpty() || password.length < 4) return
+            if (incognitoTabs.contains(tabId)) return
+            if (saveBlockedHosts.contains(host.lowercase())) return
+            synchronized(pendingSaves) {
+                if (pendingSaves.containsKey(tabId)) return
+            }
+            // 已存且一致则不打扰（瞬态解密比对，比完即弃）
+            if (credentialStore.matches(host, username, password)) return
+            val origin = "https://" + host
+            val pw = password.toCharArray()
+            synchronized(pendingSaves) {
+                pendingSaves[tabId] = pw
+                pendingMeta[tabId] = Triple(host, origin, username)
+            }
+            Handler(Looper.getMainLooper()).post {
+                onPasswordEvent?.invoke(tabId, "save", host, username)
+            }
+        }
+    }
+
+    /** 保存待确认的密码建议 */
+    fun acceptSaveSuggestion(tabId: Int) {
+        val pw: CharArray
+        val meta: Triple<String, String, String>
+        synchronized(pendingSaves) {
+            val p = pendingSaves.remove(tabId) ?: return
+            val m = pendingMeta.remove(tabId) ?: return
+            pw = p
+            meta = m
+        }
+        credentialStore.save(meta.second, meta.first, meta.third, String(pw))
+        pw.fill('\0')
+    }
+
+    /** 放弃保存（清零） */
+    fun discardSaveSuggestion(tabId: Int) {
+        val pw: CharArray?
+        synchronized(pendingSaves) {
+            pw = pendingSaves.remove(tabId)
+            pendingMeta.remove(tabId)
+        }
+        if (pw != null) pw.fill('\0')
+    }
+
+    /** 永不保存此站（本会话） */
+    fun blockSaveForHost(tabId: Int, host: String) {
+        saveBlockedHosts.add(host.lowercase())
+        discardSaveSuggestion(tabId)
+    }
+
+    /** 自动填充 host 下最近使用的凭据：瞬态解密 → 注入页面 → 立即清零 */
+    fun fillSavedPassword(tabId: Int, host: String, username: String) {
+        val rows = credentialStore.rowsForHost(host)
+        val row = rows.firstOrNull { it.username == username } ?: rows.firstOrNull() ?: return
+        val pw = credentialStore.getPassword(row.id) ?: return
+        val passPlain = String(pw)
+        pw.fill('\0')
+        val wv = webViews[tabId] ?: return
+        val fillJs = FILL_JS_TEMPLATE
+            .replace("__ARG_USER__", jsString(username))
+            .replace("__ARG_PASS__", jsString(passPlain))
+        wv.evaluateJavascript(fillJs, null)
+        credentialStore.touch(row.id)
+    }
+
+    private fun jsString(s: String): String =
+        "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "") + "'"
+
+    /** 页面加载完成：若该站有已存密码且页面含密码框 → 提示自动填充（每页只提示一次） */
+    private fun suggestPasswordFill(tabId: Int, view: WebView?, url: String?) {
+        if (view == null || url.isNullOrBlank()) return
+        if (incognitoTabs.contains(tabId)) return
+        if (lastFillPrompt[tabId] == url) return
+        val host = try {
+            android.net.Uri.parse(url).host ?: return
+        } catch (e: Exception) {
+            return
+        }
+        if (host.isEmpty()) return
+        if (credentialStore.rowsForHost(host).isEmpty()) return
+        view.evaluateJavascript("!!(document.querySelector('input[type=password]'))") { res ->
+            if (res == "true") {
+                Handler(Looper.getMainLooper()).post {
+                    lastFillPrompt[tabId] = url
+                    onPasswordEvent?.invoke(tabId, "fill", host, credentialStore.rowsForHost(host).firstOrNull()?.username ?: "")
+                }
+            }
+        }
     }
 
     fun getWebView(tabId: Int): WebView? = webViews[tabId]
@@ -573,13 +729,20 @@ class WebViewManager(
                     if (host != null) set.add(host)
                 }
                 listener.onPageStarted(tabId, url ?: "")
+                if (tabId !in incognitoTabs) {
+                    view?.evaluateJavascript(PASSWORD_CAPTURE_JS, null)
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 view?.evaluateJavascript(DOWNLOAD_NAME_HOOK_JS, null)
+                if (tabId !in incognitoTabs) {
+                    view?.evaluateJavascript(PASSWORD_CAPTURE_JS, null)
+                }
                 applyZoom(tabId)
                 listener.onPageFinished(tabId, view?.title ?: "", url ?: "")
+                suggestPasswordFill(tabId, view, url)
             }
 
             /** 主文档走 HttpURLConnection 加载：精确计数字节；失败时返回 null 让 WebView 正常加载。
