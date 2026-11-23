@@ -107,6 +107,23 @@ object AppStrings {
         "up_check_failed" to "Update check failed: cannot reach GitHub, please retry later",
         "up_dl_failed" to "Download failed: both direct and gh-proxy are unavailable, please retry later",
         "up_saved" to "Saved to Download folder",
+        // 保存的密码 / 自动填充
+        "saved_passwords" to "Saved Passwords",
+        "no_passwords" to "No saved passwords",
+        "save_password" to "Save password?",
+        "website" to "Website",
+        "username" to "Username",
+        "never_save" to "Never for this site",
+        "auto_fill" to "Auto-fill",
+        "saved_password_found" to "Saved password found",
+        "show_password" to "Show",
+        "hide_password" to "Hide",
+        "edit_password" to "Change Password",
+        "edit_username" to "Change Username",
+        "last_used" to "Last used",
+        "password_security_note" to "Passwords are stored encrypted (AES-256, device key vault). Plaintext never touches disk.",
+        "clear_passwords_confirm" to "This will permanently delete this password",
+        "security" to "Security",
     )
 
     private val zh = mapOf(
@@ -215,6 +232,23 @@ object AppStrings {
         "up_check_failed" to "检查失败：无法连接 GitHub，请稍后重试",
         "up_dl_failed" to "下载失败：直连与 gh-proxy 代理均不可用，请稍后重试",
         "up_saved" to "已保存到 Download 目录",
+        // 保存的密码 / 自动填充
+        "saved_passwords" to "保存的密码",
+        "no_passwords" to "没有保存的密码",
+        "save_password" to "保存密码？",
+        "website" to "网站",
+        "username" to "用户名",
+        "never_save" to "此站永不保存",
+        "auto_fill" to "自动填充",
+        "saved_password_found" to "发现已保存的密码",
+        "show_password" to "显示",
+        "hide_password" to "隐藏",
+        "edit_password" to "修改密码",
+        "edit_username" to "修改用户名",
+        "last_used" to "最近使用",
+        "password_security_note" to "密码以 AES-256 加密存储（密钥锁在设备安全区），明文不落盘。",
+        "clear_passwords_confirm" to "这将永久删除该密码",
+        "security" to "安全",
     )
 
     var currentLanguage = "en"

@@ -16,6 +16,7 @@ object Destinations {
     const val DOWNLOADS = "downloads"
     const val SETTINGS = "settings"
     const val DEV = "dev"
+    const val PASSWORDS = "passwords"
 }
 
 @Composable
@@ -90,12 +91,19 @@ fun BrowserNavHost(
         composable(Destinations.SETTINGS) {
             SettingsScreen(
                 viewModel = settingsVM,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToPasswords = { navController.navigate(Destinations.PASSWORDS) }
             )
         }
         composable(Destinations.DEV) {
             DevScreen(
                 webManager = webManager,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Destinations.PASSWORDS) {
+            PasswordsScreen(
+                store = webManager.credentialStore,
                 onBack = { navController.popBackStack() }
             )
         }
