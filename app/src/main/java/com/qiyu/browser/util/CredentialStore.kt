@@ -15,7 +15,9 @@ import org.json.JSONObject
 
 /**
  * 凭据存储（对标 Edge 安全等级）：
- * - 密钥：Android Keystore 内生成的 AES-256（不可导出；设备支持时硬件级保护）
+ * - 密钥：Android Keystore 内生成的 AES-128（不可导出；设备支持时硬件级保护）。
+ *   不用 256 位：非美区设备（含国产 ROM）受加密导出限制，Keystore 256 位密钥
+ *   的 Cipher.init 会报 "Keystore operation failed"；128 位全设备可用，GCM 认证标签仍保证完整性
  * - 每条密码独立 AES-GCM 加密（12 字节随机 IV + 认证标签，篡改/位翻转可检出）
  * - 磁盘上只有密文与元数据，绝无明文
  * - 明文只出现在「保存/比对/填充」的瞬间（char[]），用完立即清零；
@@ -54,22 +56,36 @@ class CredentialStore private constructor(private val ctx: Context) {
         val ks = keyStore()
         val existing = ks.getKey(KEY_ALIAS, null)
         if (existing is SecretKey) return existing
-        val spec = KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-            .setKeySize(256)
-            .build()
-        return generateKey(spec)
+        return generateKey(128)
     }
 
-    private fun generateKey(spec: KeyGenParameterSpec): SecretKey {
+    /** 128 位 AES：全设备/全地区可用（256 位在非美区设备受加密导出限制，Cipher.init 会报 Keystore operation failed） */
+    private fun generateKey(size: Int): SecretKey {
+        val spec = KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            .setKeySize(size)
+            .build()
         val kg = KeyGenerator.getInstance("AES", "AndroidKeyStore")
         kg.init(spec)
         return kg.generateKey()
     }
 
-    /** 加密：返回 base64(iv || ciphertext) */
-    private fun encrypt(plain: String): String {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+    /** 初始化 Cipher；密钥损坏/设备策略变更时删旧重建一次 */
+    private fun cipherFor(encrypt: Boolean): Cipher {
+        try {
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE, getOrCreateKey())
+            return c
+        } catch (e: Exception) {
+            try { keyStore().deleteEntry(KEY_ALIAS) } catch (e2: Exception) {}
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE, generateKey(128))
+            return c
+        }
+    }
+
+    /** 加密：返回 base64(iv || ciphertext)。Keystore 异常时招出，由调用方降级处理 */
+    fun encrypt(plain: String): String {
+        val cipher = cipherFor(true)
         val ct = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
         val iv = cipher.iv
         return Base64.encodeToString(iv + ct, Base64.NO_WRAP)
@@ -78,10 +94,10 @@ class CredentialStore private constructor(private val ctx: Context) {
     /** 解密：入参 base64(iv || ciphertext)；失败返回 null。返回 char[]，调用方负责清零 */
     private fun decrypt(b64: String): CharArray? {
         return try {
+            val cipher = cipherFor(false)
             val raw = Base64.decode(b64, Base64.NO_WRAP)
             val iv = raw.copyOfRange(0, 12)
             val ct = raw.copyOfRange(12, raw.size)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
             String(cipher.doFinal(ct), Charsets.UTF_8).toCharArray()
         } catch (e: Exception) {
@@ -147,24 +163,29 @@ class CredentialStore private constructor(private val ctx: Context) {
 
     // ---- 对外 API ----
 
-    /** 保存/更新一条（host+username 唯一）。明文仅在方法栈内短暂存在 */
+    /** 保存/更新一条（host+username 唯一）。明文仅在方法栈内短暂存在；加密失败返回 -1（不抛不 crash） */
     fun save(origin: String, host: String, username: String, password: String): Long {
         if (host.isEmpty() || password.isEmpty()) return -1L
-        val rows = loadRows().toMutableList()
-        val ct = encrypt(password)
-        val idx = rows.indexOfFirst { it.first.host.equals(host, true) && it.first.username == username }
-        val now = System.currentTimeMillis()
-        if (idx >= 0) {
-            val (old, _) = rows[idx]
-            rows[idx] = old.copy(origin = origin, lastUsed = now) to ct
-            saveRows(rows)
-            return old.id
+        return try {
+            val rows = loadRows().toMutableList()
+            val ct = encrypt(password)
+            val idx = rows.indexOfFirst { it.first.host.equals(host, true) && it.first.username == username }
+            val now = System.currentTimeMillis()
+            if (idx >= 0) {
+                val (old, _) = rows[idx]
+                rows[idx] = old.copy(origin = origin, lastUsed = now) to ct
+                saveRows(rows)
+                old.id
+            } else {
+                val id = nextId++
+                val row = CredRow(id, origin, host, username, now, now)
+                rows.add(row to ct)
+                saveRows(rows)
+                id
+            }
+        } catch (e: Exception) {
+            -1L
         }
-        val id = nextId++
-        val row = CredRow(id, origin, host, username, now, now)
-        rows.add(row to ct)
-        saveRows(rows)
-        return id
     }
 
     /** 比对已存密码是否与输入一致（瞬态解密，比较完即弃） */
@@ -201,10 +222,16 @@ class CredentialStore private constructor(private val ctx: Context) {
     }
 
     fun setPassword(id: Long, password: String) {
+        if (password.isEmpty()) return
         val rows = loadRows().toMutableList()
         val idx = rows.indexOfFirst { it.first.id == id }
-        if (idx < 0 || password.isEmpty()) return
-        rows[idx] = rows[idx].first.copy(lastUsed = System.currentTimeMillis()) to encrypt(password)
+        if (idx < 0) return
+        val ct = try {
+            encrypt(password)
+        } catch (e: Exception) {
+            return
+        }
+        rows[idx] = rows[idx].first.copy(lastUsed = System.currentTimeMillis()) to ct
         saveRows(rows)
     }
 

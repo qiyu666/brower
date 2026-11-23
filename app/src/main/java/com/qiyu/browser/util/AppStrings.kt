@@ -121,7 +121,7 @@ object AppStrings {
         "edit_password" to "Change Password",
         "edit_username" to "Change Username",
         "last_used" to "Last used",
-        "password_security_note" to "Passwords are stored encrypted (AES-256, device key vault). Plaintext never touches disk.",
+        "password_security_note" to "Passwords are stored encrypted (AES in device key vault, non-exportable). Plaintext never touches disk.",
         "clear_passwords_confirm" to "This will permanently delete this password",
         "security" to "Security",
     )
@@ -246,7 +246,7 @@ object AppStrings {
         "edit_password" to "修改密码",
         "edit_username" to "修改用户名",
         "last_used" to "最近使用",
-        "password_security_note" to "密码以 AES-256 加密存储（密钥锁在设备安全区），明文不落盘。",
+        "password_security_note" to "密码以 AES 加密存储（密钥锁在设备安全区，不可导出），明文不落盘。",
         "clear_passwords_confirm" to "这将永久删除该密码",
         "security" to "安全",
     )
