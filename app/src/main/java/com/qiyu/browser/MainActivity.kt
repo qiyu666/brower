@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
                 // 加载失败时 onPageFinished 的 url 为 null/空：保留用户输入的网址（同 Edge 行为），避免地址栏丢失上下文
                 val oldUrl = tabsVM.tabs.value.find { it.id == tabId }?.url ?: ""
                 val finUrl = if (url.isEmpty()) (wv?.url ?: oldUrl) else url
+                com.qiyu.browser.util.UiDebugLog.log(this, "pageFinished tab=$tabId finishedUrl='${url}' finUrl='${finUrl.take(60)}' oldUrl='${oldUrl.take(40)}' wvUrl='${(wv?.url ?: "").take(40)}'")
                 tabsVM.updateTabState(
                     tabId = tabId,
                     title = if (title.isEmpty() || title == "about:blank") "" else title,

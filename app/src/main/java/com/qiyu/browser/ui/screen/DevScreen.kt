@@ -6,6 +6,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +46,7 @@ fun DevScreen(
     var remoteDebug by remember { mutableStateOf(webManager.remoteDebugging) }
     var typeFilter by remember { mutableStateOf("all") }
     var query by remember { mutableStateOf("") }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -110,6 +115,31 @@ fun DevScreen(
                 )
             }
             HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+            // UI 状态日志（定位“地址栏消失”等偶发状态问题：复现后一键复制发开发者）
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("UI 日志", style = MaterialTheme.typography.bodyLarge)
+                    val dump = com.qiyu.browser.util.UiDebugLog.dump()
+                    Text(
+                        dump.lines().takeLast(6).joinToString("\n"),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        maxLines = 6
+                    )
+                }
+                TextButton(onClick = {
+                    (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                        ?.setPrimaryClip(ClipData.newPlainText("qiyu-ui-log", com.qiyu.browser.util.UiDebugLog.dump()))
+                    Toast.makeText(ctx, "UI 日志已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                }) { Text("复制") }
+            }
             if (selected == 0) {
                 NetworkPanel(netLog, typeFilter, query, { typeFilter = it }, { query = it })
             } else {

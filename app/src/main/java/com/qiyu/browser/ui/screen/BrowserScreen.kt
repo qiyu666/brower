@@ -92,6 +92,7 @@ fun BrowserScreen(
     LaunchedEffect(tabs, activeTab) {
         if (activeTab == null && tabs.isNotEmpty()) {
             tabsVM.switchTab(tabs.last().id)
+            UiDebugLog.log(context, "self-heal: activeTab null -> switchTab(${tabs.last().id})")
         }
     }
     // 兑底：即使失配尚未自愈，地址栏/Tab 条也按「实际显示的标签」（最后一个）渲染，永不消失
@@ -116,6 +117,15 @@ fun BrowserScreen(
         && (barTab?.title.isNullOrEmpty() || barTab?.title == newTabTitle)
         && !(barTab?.canGoBack ?: false)
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
+    // 诊断：显隐条件变化时记日志，开发者面板可复制（定位“地址栏消失”用）
+    var lastUiSig by remember { mutableStateOf("") }
+    val uiSig = "snt=$showNewTab active=${activeTab?.id} bar=${barTab?.id}/${(barTab?.url ?: "").take(30)} tabs=${tabs.size} title=${(barTab?.title ?: "").take(20)} back=${barTab?.canGoBack} home=${config.homePage.take(20)}"
+    LaunchedEffect(uiSig) {
+        if (uiSig != lastUiSig) {
+            UiDebugLog.log(context, "UI sig: $uiSig")
+            lastUiSig = uiSig
+        }
+    }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDark = when (config.darkMode) {
         "dark" -> true
