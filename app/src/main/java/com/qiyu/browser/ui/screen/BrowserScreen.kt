@@ -87,13 +87,15 @@ fun BrowserScreen(
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 自愈：activeTabId 与 tabs 失配（activeTab=null 但还有 tab）时切回最后一个 tab，
-    // 否则地址栏（activeTab?.let）会被整个跳过、只剩 tab 条（加载失败等路径下可复现）
-    LaunchedEffect(tabs) {
+    // 自愈：activeTabId 与 tabs 失配（activeTab=null 但还有 tab）时切回最后一个 tab。
+    // 监听 tabs 与 activeTab 两者：activeTabId 单独被置空时也会重新触发
+    LaunchedEffect(tabs, activeTab) {
         if (activeTab == null && tabs.isNotEmpty()) {
             tabsVM.switchTab(tabs.last().id)
         }
     }
+    // 兑底：即使失配尚未自愈，地址栏/Tab 条也按「实际显示的标签」（最后一个）渲染，永不消失
+    val barTab = activeTab ?: tabs.lastOrNull()
     val favBookmarks by bookmarksVM.bookmarks.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -110,9 +112,9 @@ fun BrowserScreen(
     // 标签一旦有了标题或历史（如加载失败页、有前进后退栈），即使 url 被清空也不再翻转为新标签页，
     // 地址栏不会被卸载（Edge 行为：地址栏始终在，失败时显示最后输入的网址）
     val newTabTitle = AppStrings.t("new_tab")
-    val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
-        && (activeTab?.title.isNullOrEmpty() || activeTab?.title == newTabTitle)
-        && !(activeTab?.canGoBack ?: false)
+    val showNewTab = (barTab?.url.isNullOrEmpty() || barTab?.url == "about:blank")
+        && (barTab?.title.isNullOrEmpty() || barTab?.title == newTabTitle)
+        && !(barTab?.canGoBack ?: false)
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDark = when (config.darkMode) {
@@ -131,7 +133,7 @@ fun BrowserScreen(
         if (tabs.size > 1 || tabs.firstOrNull()?.url?.isNotEmpty() == true) {
             TabStrip(
                 tabs = tabs,
-                activeTabId = activeTab?.id,
+                activeTabId = barTab?.id,
                 onTabClick = { tabsVM.switchTab(it) },
                 onTabClose = {
                     val wasLast = tabsVM.tabs.value.size == 1
@@ -158,8 +160,8 @@ fun BrowserScreen(
             )
         }
 
-        activeTab?.let { tab ->
-            // Address bar
+        // 地址栏：用 barTab（activeTab 失配时兑底最后一个标签），保证只要还有标签就始终渲染
+        barTab?.let { tab ->
             AddressBar(
                 url = tab.url,
                 isLoading = tab.isLoading,
@@ -248,7 +250,7 @@ fun BrowserScreen(
             if (showNewTab) {
                 NewTabPage(
                     onNavigate = { url ->
-                        activeTab?.let { tab ->
+                        barTab?.let { tab ->
                             webManager.loadUrl(tab.id, url)
                             tabsVM.updateTabState(tab.id, url = url, isLoading = true)
                         }
@@ -269,12 +271,12 @@ fun BrowserScreen(
         // Bottom nav
         BottomNav(
             onBack = {
-                activeTab?.let { tab ->
+                barTab?.let { tab ->
                     webManager.goBack(tab.id)
                 }
             },
             onForward = {
-                activeTab?.let { tab ->
+                barTab?.let { tab ->
                     webManager.goForward(tab.id)
                 }
             },
@@ -290,8 +292,8 @@ fun BrowserScreen(
             tabCount = tabs.size,
             onTabSwitcher = { showTabSwitcher = true },
             onMenu = { showMenu = true },
-            canGoBack = activeTab?.canGoBack ?: false,
-            canGoForward = activeTab?.canGoForward ?: false
+            canGoBack = barTab?.canGoBack ?: false,
+            canGoForward = barTab?.canGoForward ?: false
         )
     }
 
