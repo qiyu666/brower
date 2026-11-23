@@ -35,6 +35,7 @@ import java.io.File
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
+    onNavigateToPasswords: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
