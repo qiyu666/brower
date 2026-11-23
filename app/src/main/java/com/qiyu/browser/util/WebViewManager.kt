@@ -480,7 +480,7 @@ class WebViewManager(
             meta = m
         }
         credentialStore.save(meta.second, meta.first, meta.third, String(pw))
-        pw.fill('\0')
+        pw.fill('\u0000')
     }
 
     /** 放弃保存（清零） */
@@ -490,7 +490,7 @@ class WebViewManager(
             pw = pendingSaves.remove(tabId)
             pendingMeta.remove(tabId)
         }
-        if (pw != null) pw.fill('\0')
+        if (pw != null) pw.fill('\u0000')
     }
 
     /** 永不保存此站（本会话） */
@@ -505,7 +505,7 @@ class WebViewManager(
         val row = rows.firstOrNull { it.username == username } ?: rows.firstOrNull() ?: return
         val pw = credentialStore.getPassword(row.id) ?: return
         val passPlain = String(pw)
-        pw.fill('\0')
+        pw.fill('\u0000')
         val wv = webViews[tabId] ?: return
         val fillJs = FILL_JS_TEMPLATE
             .replace("__ARG_USER__", jsString(username))

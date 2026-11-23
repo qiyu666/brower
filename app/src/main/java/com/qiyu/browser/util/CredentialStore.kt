@@ -182,7 +182,7 @@ class CredentialStore private constructor(private val ctx: Context) {
                 }
             }
         }
-        saved.fill('\0')
+        saved.fill('\u0000')
         return equal
     }
 
