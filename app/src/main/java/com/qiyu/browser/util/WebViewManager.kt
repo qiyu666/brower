@@ -107,6 +107,8 @@ class WebViewManager(
     private val incognitoTabs = mutableSetOf<Int>()
     private val incognitoDomains = mutableMapOf<Int, MutableSet<String>>()
     private val favicons = mutableMapOf<Int, android.graphics.Bitmap>()
+    /** 每个标签当前已应用的深色状态：导航往返导致 LaunchedEffect 重跑时，状态未变就跳过 applyDarkMode（不 reload） */
+    private val tabDarkApplied = mutableMapOf<Int, Boolean>()
 
     // 流量统计：主文档走 HttpURLConnection 拦截计数（转发 Cookie 保持会话），
     // lastPageBytes=当前页已加载字节，sessionBytes=历史页累计
@@ -285,9 +287,11 @@ class WebViewManager(
         val webView = WebView(context).apply {
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = true
-            if (config.darkMode == "dark" || (config.darkMode == "auto" && android.os.Build.VERSION.SDK_INT >= 29)) {
+            val darkNow = config.darkMode == "dark" || (config.darkMode == "auto" && android.os.Build.VERSION.SDK_INT >= 29)
+            if (darkNow) {
                 setBackgroundColor(0xFF1E1E1E.toInt())
             }
+            this@WebViewManager.tabDarkApplied[tabId] = darkNow
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = !incognito
@@ -392,6 +396,7 @@ class WebViewManager(
     fun destroyWebView(tabId: Int) {
         clearIncognitoCookies(tabId)
         incognitoTabs.remove(tabId)
+        tabDarkApplied.remove(tabId)
         webViews.remove(tabId)?.let {
             it.stopLoading()
             it.loadUrl("about:blank")
@@ -468,6 +473,8 @@ class WebViewManager(
 
     fun applyDarkMode(dark: Boolean) {
         webViews.forEach { (tabId, webView) ->
+            if (tabDarkApplied[tabId] == dark) return@forEach
+            tabDarkApplied[tabId] = dark
             webView.setBackgroundColor(if (dark) 0xFF1E1E1E.toInt() else 0xFFFFFFFF.toInt())
             if (android.os.Build.VERSION.SDK_INT >= 28) {
                 @Suppress("DEPRECATION")
