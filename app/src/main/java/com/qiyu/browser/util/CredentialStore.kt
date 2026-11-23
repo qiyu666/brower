@@ -173,16 +173,18 @@ class CredentialStore private constructor(private val ctx: Context) {
         val target = rows.firstOrNull { it.first.host.equals(host, true) && it.first.username == username }
             ?: return false
         val saved = decrypt(target.second) ?: return false
-        var equal = saved.length == password.length
+        val plainArr = password.toCharArray()
+        var equal = saved.size == plainArr.size
         if (equal) {
             for (i in saved.indices) {
-                if (saved[i] != password[i]) {
+                if (saved[i] != plainArr[i]) {
                     equal = false
                     break
                 }
             }
         }
         saved.fill('\u0000')
+        plainArr.fill('\u0000')
         return equal
     }
 
