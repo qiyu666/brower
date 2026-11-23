@@ -56,6 +56,7 @@ import com.qiyu.browser.ui.component.AddressBar
 import com.qiyu.browser.ui.component.BottomNav
 import com.qiyu.browser.ui.component.TabStrip
 import com.qiyu.browser.util.AppStrings
+import com.qiyu.browser.util.UiDebugLog
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.util.SearchSuggester
