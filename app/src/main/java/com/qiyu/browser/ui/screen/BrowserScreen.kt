@@ -106,7 +106,13 @@ fun BrowserScreen(
     val config by settingsVM.config.collectAsStateWithLifecycle()
     val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
     var prevTabId by remember { mutableStateOf<Int?>(null) }
+    // 新标签页判定：空白标签（无网址、无标题、无历史）且未设主页。1.7.16 加固：
+    // 标签一旦有了标题或历史（如加载失败页、有前进后退栈），即使 url 被清空也不再翻转为新标签页，
+    // 地址栏不会被卸载（Edge 行为：地址栏始终在，失败时显示最后输入的网址）
+    val newTabTitle = AppStrings.t("new_tab")
     val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
+        && (activeTab?.title.isNullOrEmpty() || activeTab?.title == newTabTitle)
+        && !(activeTab?.canGoBack ?: false)
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDark = when (config.darkMode) {
