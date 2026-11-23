@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewModelScope
 import com.qiyu.browser.model.TabItem
 import com.qiyu.browser.util.AppStrings
+import com.qiyu.browser.util.UiDebugLog
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,7 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
         val title = if (url.isEmpty()) AppStrings.t("new_tab") else url
         _tabs.update { it + TabItem(id = id, url = url, title = title, isIncognito = incognito) }
         _activeTabId.value = id
+        UiDebugLog.log(getApplication(), "tab add id=$id incognito=$incognito total=${_tabs.value.size} active=$id")
         return id
     }
 
@@ -51,16 +53,20 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
             }
             remaining
         }
+        UiDebugLog.log(getApplication(), "tab close id=$tabId remaining=${_tabs.value.size} active=${_activeTabId.value}")
         if (_tabs.value.isEmpty()) {
             val id = nextTabId++
             _tabs.update { it + TabItem(id = id, url = "", title = AppStrings.t("new_tab"), isIncognito = false) }
             _activeTabId.value = id
+            UiDebugLog.log(getApplication(), "tab auto-recreate id=$id after close-all")
         }
     }
 
     fun closeAllTabs() {
+        val before = _tabs.value.map { it.id }
         _tabs.value = emptyList()
         _activeTabId.value = null
+        UiDebugLog.log(getApplication(), "tab closeAll closed=$before active=null")
     }
 
     fun closeAllIncognitoTabs() {

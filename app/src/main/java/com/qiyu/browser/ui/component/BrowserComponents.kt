@@ -84,11 +84,12 @@ fun AddressBar(
     val suggestRows = remember(showSuggest, inputText, localSuggests, remoteSuggests) {
         if (!showSuggest || inputText.length < 2) return@remember emptyList<SuggestRow>()
         val rows = mutableListOf(
-            SuggestRow(AppStrings.t("search_suggest") + " " + inputText + " · " + WebUtils.engineLabel(searchEngine), SuggestRowKind.SEARCH)
+            // 搜索行：显示文字是说明，提交的是用户输入本身（resolveUrlOrSearch 会按引擎搜索）
+            SuggestRow(AppStrings.t("search_suggest") + " " + inputText + " · " + WebUtils.engineLabel(searchEngine), inputText, SuggestRowKind.SEARCH)
         )
-        remoteSuggests.distinct().forEach { rows += SuggestRow(it, SuggestRowKind.REMOTE) }
+        remoteSuggests.distinct().forEach { rows += SuggestRow(it, it, SuggestRowKind.REMOTE) }
         localSuggests.distinct().filter { l -> remoteSuggests.none { r -> r.equals(l, true) } }
-            .forEach { rows += SuggestRow(it, SuggestRowKind.HISTORY) }
+            .forEach { rows += SuggestRow(it, it, SuggestRowKind.HISTORY) }
         rows
     }
 
@@ -197,7 +198,7 @@ private fun SuggestDropdown(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onPick(row.text) }
+                        .clickable { onPick(row.submit) }
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -228,7 +229,7 @@ private fun SuggestDropdown(
 
 private enum class SuggestRowKind { SEARCH, REMOTE, HISTORY }
 
-private data class SuggestRow(val text: String, val kind: SuggestRowKind)
+private data class SuggestRow(val text: String, val submit: String, val kind: SuggestRowKind)
 
 @Composable
 fun TabStrip(
