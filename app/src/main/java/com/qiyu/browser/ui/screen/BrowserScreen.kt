@@ -86,6 +86,14 @@ fun BrowserScreen(
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // 自愈：activeTabId 与 tabs 失配（activeTab=null 但还有 tab）时切回最后一个 tab，
+    // 否则地址栏（activeTab?.let）会被整个跳过、只剩 tab 条（加载失败等路径下可复现）
+    LaunchedEffect(tabs) {
+        if (activeTab == null && tabs.isNotEmpty()) {
+            tabsVM.switchTab(tabs.last().id)
+        }
+    }
     val favBookmarks by bookmarksVM.bookmarks.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }

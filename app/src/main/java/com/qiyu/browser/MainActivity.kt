@@ -81,16 +81,19 @@ class MainActivity : ComponentActivity() {
 
             override fun onPageFinished(tabId: Int, title: String, url: String) {
                 val wv = webManager.getWebView(tabId)
+                // 加载失败时 onPageFinished 的 url 为 null/空：保留用户输入的网址（同 Edge 行为），避免地址栏丢失上下文
+                val oldUrl = tabsVM.tabs.value.find { it.id == tabId }?.url ?: ""
+                val finUrl = if (url.isEmpty()) (wv?.url ?: oldUrl) else url
                 tabsVM.updateTabState(
                     tabId = tabId,
                     title = if (title.isEmpty() || title == "about:blank") "" else title,
-                    url = url,
+                    url = finUrl,
                     canGoBack = wv?.canGoBack() ?: false,
                     canGoForward = wv?.canGoForward() ?: false,
                     isLoading = false
                 )
                 val tab = tabsVM.tabs.value.find { it.id == tabId }
-                if (tab != null && !tab.isIncognito && url.isNotEmpty() && url != "about:blank") {
+                if (tab != null && !tab.isIncognito && finUrl.isNotEmpty() && finUrl != "about:blank") {
                     lifecycleScope.launch {
                         bookmarksVM.saveToHistory(
                             title.ifEmpty { WebUtils.extractDomain(url) }, url, false
