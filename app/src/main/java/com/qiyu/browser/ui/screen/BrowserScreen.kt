@@ -84,6 +84,9 @@ fun BrowserScreen(
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
     val activeTab by tabsVM.activeTab.collectAsStateWithLifecycle()
+    // 激活标签兑底：activeTab 与列表失配（为 null 但还有标签）时用最后一个标签，
+    // 保证地址栏/内容区在任何激活态下都不消失（WebView 实际显示的就是它）
+    val barTab = activeTab ?: tabs.lastOrNull()
     val context = LocalContext.current
     val favBookmarks by bookmarksVM.bookmarks.collectAsStateWithLifecycle()
     var showTabSwitcher by remember { mutableStateOf(false) }
@@ -97,7 +100,7 @@ fun BrowserScreen(
     val config by settingsVM.config.collectAsStateWithLifecycle()
     val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
     var prevTabId by remember { mutableStateOf<Int?>(null) }
-    val showNewTab = (activeTab?.url.isNullOrEmpty() || activeTab?.url == "about:blank")
+    val showNewTab = (barTab?.url.isNullOrEmpty() || barTab?.url == "about:blank")
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDark = when (config.darkMode) {
@@ -143,7 +146,7 @@ fun BrowserScreen(
             )
         }
 
-        activeTab?.let { tab ->
+        barTab?.let { tab ->
             // Address bar
             AddressBar(
                 url = tab.url,
@@ -227,7 +230,7 @@ fun BrowserScreen(
             if (showNewTab) {
                 NewTabPage(
                     onNavigate = { url ->
-                        activeTab?.let { tab ->
+                        barTab?.let { tab ->
                             webManager.loadUrl(tab.id, url)
                             tabsVM.updateTabState(tab.id, url = url, isLoading = true)
                         }
@@ -248,12 +251,12 @@ fun BrowserScreen(
         // Bottom nav
         BottomNav(
             onBack = {
-                activeTab?.let { tab ->
+                barTab?.let { tab ->
                     webManager.goBack(tab.id)
                 }
             },
             onForward = {
-                activeTab?.let { tab ->
+                barTab?.let { tab ->
                     webManager.goForward(tab.id)
                 }
             },
@@ -269,8 +272,8 @@ fun BrowserScreen(
             tabCount = tabs.size,
             onTabSwitcher = { showTabSwitcher = true },
             onMenu = { showMenu = true },
-            canGoBack = activeTab?.canGoBack ?: false,
-            canGoForward = activeTab?.canGoForward ?: false
+            canGoBack = barTab?.canGoBack ?: false,
+            canGoForward = barTab?.canGoForward ?: false
         )
     }
 
@@ -508,7 +511,7 @@ fun BrowserScreen(
                         showMenu = false
                     },
                     onShare = {
-                        activeTab?.let { onShare(it.url, it.title) }
+                        barTab?.let { onShare(it.url, it.title) }
                         showMenu = false
                     },
                     onTraffic = {
@@ -528,7 +531,7 @@ fun BrowserScreen(
                         onDev()
                     },
                     onCopyLink = {
-                        activeTab?.let { tab ->
+                        barTab?.let { tab ->
                             if (tab.url.isNotEmpty() && tab.url != "about:blank") {
                                 val cm = context.getSystemService(android.content.ClipboardManager::class.java)
                                 if (cm != null) {

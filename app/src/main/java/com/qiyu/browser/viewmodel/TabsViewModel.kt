@@ -31,6 +31,14 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
         _tabs.map { tabs -> tabs.any { it.isIncognito } }
             .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    /** 不变式：标签列表非空时 activeTabId 不允许为 null。
+     *  activeTab 为 null（列表非空）会导致 UI 层地址栏整段不渲染，所有可能置 null 的路径统一兜底。 */
+    private fun ensureActiveTab() {
+        if (_activeTabId.value == null && _tabs.value.isNotEmpty()) {
+            _activeTabId.value = _tabs.value.last().id
+        }
+    }
+
     fun addTab(url: String = "", incognito: Boolean = false): Int {
         val id = nextTabId++
         val title = if (url.isEmpty()) AppStrings.t("new_tab") else url
@@ -56,11 +64,13 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
             _tabs.update { it + TabItem(id = id, url = "", title = AppStrings.t("new_tab"), isIncognito = false) }
             _activeTabId.value = id
         }
+        ensureActiveTab()
     }
 
     fun closeAllTabs() {
         _tabs.value = emptyList()
         _activeTabId.value = null
+        ensureActiveTab()
     }
 
     fun closeAllIncognitoTabs() {
@@ -70,6 +80,7 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
         } else if (_tabs.value.none { it.id == _activeTabId.value }) {
             _activeTabId.value = _tabs.value.first().id
         }
+        ensureActiveTab()
     }
 
     fun updateTabState(
@@ -94,8 +105,6 @@ class TabsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setTabLoading(tabId: Int, isLoading: Boolean) {
-        _tabs.update { tabs ->
-            tabs.map { if (it.id == tabId) it.copy(isLoading = isLoading) else it }
-        }
+        _tabs.update { tabs -> tabs.map { if (it.id == tabId) it.copy(isLoading = isLoading) else it } }
     }
 }
