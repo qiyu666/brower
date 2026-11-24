@@ -42,6 +42,7 @@ fun DevScreen(
     var remoteDebug by remember { mutableStateOf(webManager.remoteDebugging) }
     var typeFilter by remember { mutableStateOf("all") }
     var query by remember { mutableStateOf("") }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -89,6 +90,29 @@ fun DevScreen(
                     onClick = { selected = 1 },
                     label = { Text("控制台 ${consoleLog.size}") }
                 )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("UI 日志（定位状态问题：复现后复制）", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        com.qiyu.browser.util.UiDebugLog.dump().lines().takeLast(4).joinToString("\n"),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        maxLines = 4
+                    )
+                }
+                TextButton(onClick = {
+                    (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+                        ?.setPrimaryClip(android.content.ClipData.newPlainText("qiyu-ui-log", com.qiyu.browser.util.UiDebugLog.dump()))
+                    android.widget.Toast.makeText(ctx, "UI 日志已复制到剪贴板", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text("复制") }
             }
             Row(
                 modifier = Modifier

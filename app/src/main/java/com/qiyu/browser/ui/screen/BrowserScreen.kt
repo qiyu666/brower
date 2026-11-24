@@ -56,6 +56,7 @@ import com.qiyu.browser.ui.component.AddressBar
 import com.qiyu.browser.ui.component.BottomNav
 import com.qiyu.browser.ui.component.TabStrip
 import com.qiyu.browser.util.AppStrings
+import com.qiyu.browser.util.UiDebugLog
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.util.WebUtils
 import com.qiyu.browser.viewmodel.BookmarksViewModel
@@ -102,6 +103,20 @@ fun BrowserScreen(
     var prevTabId by remember { mutableStateOf<Int?>(null) }
     val showNewTab = (barTab?.url.isNullOrEmpty() || barTab?.url == "about:blank")
         && (config.homePage.isEmpty() || config.homePage == "about:blank")
+    // 诊断：显隐条件/激活态变化记日志（开发者面板可复制）
+    var lastUiSig by remember { mutableStateOf("") }
+    val uiSig = "snt=$showNewTab active=${activeTab?.id} bar=${barTab?.id}/${(barTab?.url ?: "").take(30)} tabs=${tabs.size} title=${(barTab?.title ?: "").take(20)} back=${barTab?.canGoBack} home=${config.homePage.take(20)}"
+    LaunchedEffect(uiSig) {
+        if (uiSig != lastUiSig) {
+            UiDebugLog.log(context, "UI sig: $uiSig")
+            lastUiSig = uiSig
+        }
+    }
+    LaunchedEffect(tabs, activeTab) {
+        if (activeTab == null && tabs.isNotEmpty()) {
+            UiDebugLog.log(context, "ACTIVE MISMATCH: tabs=${tabs.map { it.id }} activeId=${tabsVM.activeTabId.value}")
+        }
+    }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDark = when (config.darkMode) {
         "dark" -> true
@@ -147,7 +162,12 @@ fun BrowserScreen(
         }
 
         barTab?.let { tab ->
-            // Address bar
+            // 诊断：地址栏卸载时记日志（复现“消失”的铁证）
+            DisposableEffect(Unit) {
+                onDispose {
+                    UiDebugLog.log(context, "addressbar UNMOUNT tab=${tab.id} url='${tab.url.take(40)}' snt=$showNewTab active=${activeTab?.id} tabs=${tabs.size}")
+                }
+            }
             AddressBar(
                 url = tab.url,
                 isLoading = tab.isLoading,
