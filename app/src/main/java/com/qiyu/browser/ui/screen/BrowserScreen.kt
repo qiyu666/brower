@@ -58,7 +58,6 @@ import com.qiyu.browser.ui.component.TabStrip
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebViewManager
 import com.qiyu.browser.util.WebUtils
-import com.qiyu.browser.util.SearchSuggester
 import com.qiyu.browser.viewmodel.BookmarksViewModel
 import com.qiyu.browser.viewmodel.HistoryViewModel
 import com.qiyu.browser.viewmodel.SettingsViewModel
@@ -156,12 +155,6 @@ fun BrowserScreen(
                     val resolvedUrl = WebUtils.resolveUrlOrSearch(input, config.searchEngine)
                     webManager.loadUrl(tab.id, resolvedUrl)
                     tabsVM.updateTabState(tab.id, url = resolvedUrl, isLoading = true)
-                },
-                searchEngine = config.searchEngine,
-                localSuggest = { q -> historyVM.suggest(q) },
-                remoteSuggest = { q ->
-                    val engine = settingsVM.config.value.searchEngine
-                    SearchSuggester.fetchSuggests(engine, q)
                 },
                 onBack = {
                     if (webManager.goBack(tab.id)) {

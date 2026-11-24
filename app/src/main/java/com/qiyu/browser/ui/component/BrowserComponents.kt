@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import com.qiyu.browser.model.TabItem
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.util.WebUtils
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,42 +53,13 @@ fun AddressBar(
     onForward: () -> Unit,
     onRefresh: () -> Unit,
     onBookmarkToggle: () -> Unit,
-    searchEngine: String = "google",
-    localSuggest: suspend (String) -> List<String> = { emptyList() },
-    remoteSuggest: suspend (String) -> List<String> = { emptyList() },
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf(if (url == "about:blank" || url.isEmpty()) "" else url) }
     var isEditing by remember { mutableStateOf(false) }
-    var showSuggest by remember { mutableStateOf(false) }
-    var remoteSuggests by remember { mutableStateOf<List<String>>(emptyList()) }
-    var localSuggests by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(url) {
         if (!isEditing) inputText = if (url == "about:blank" || url.isEmpty()) "" else url
-    }
-
-    // 编辑中且输入 >=2 字符 → 防抖拉取本地历史 + 远程联想
-    LaunchedEffect(isEditing, inputText) {
-        if (isEditing && inputText.length >= 2) {
-            delay(250)
-            showSuggest = true
-            localSuggests = runCatching { localSuggest(inputText) }.getOrDefault(emptyList())
-            remoteSuggests = runCatching { remoteSuggest(inputText) }.getOrDefault(emptyList())
-        } else {
-            showSuggest = false
-        }
-    }
-
-    val suggestRows = remember(showSuggest, inputText, localSuggests, remoteSuggests) {
-        if (!showSuggest || inputText.length < 2) return@remember emptyList<SuggestRow>()
-        val rows = mutableListOf(
-            SuggestRow(AppStrings.t("search_suggest") + " " + inputText + " · " + WebUtils.engineLabel(searchEngine), SuggestRowKind.SEARCH)
-        )
-        remoteSuggests.distinct().forEach { rows += SuggestRow(it, SuggestRowKind.REMOTE) }
-        localSuggests.distinct().filter { l -> remoteSuggests.none { r -> r.equals(l, true) } }
-            .forEach { rows += SuggestRow(it, SuggestRowKind.HISTORY) }
-        rows
     }
 
     Box(modifier = modifier.fillMaxWidth()) {
@@ -133,9 +103,9 @@ fun AddressBar(
                 placeholder = { Text(AppStrings.t("search_or_type_url")) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
-                    onSearch = { if (inputText.isNotBlank()) { onUrlSubmit(inputText); showSuggest = false } },
-                    onDone = { if (inputText.isNotBlank()) { onUrlSubmit(inputText); showSuggest = false } },
-                    onGo = { if (inputText.isNotBlank()) { onUrlSubmit(inputText); showSuggest = false } }
+                    onSearch = { if (inputText.isNotBlank()) onUrlSubmit(inputText) },
+                    onDone = { if (inputText.isNotBlank()) onUrlSubmit(inputText) },
+                    onGo = { if (inputText.isNotBlank()) onUrlSubmit(inputText) }
                 ),
                 modifier = Modifier
                     .weight(1f)
@@ -166,69 +136,8 @@ fun AddressBar(
             )
         }
     }
-
-    if (showSuggest && suggestRows.isNotEmpty()) {
-        SuggestDropdown(
-            rows = suggestRows,
-            onPick = { picked ->
-                onUrlSubmit(picked)
-                showSuggest = false
-            },
-            modifier = Modifier.matchParentSize()
-        )
-    }
     }
 }
-
-// 联想下拉：盖在地址栏下方（matchParentSize + 上内边距避开地址栏本体），点项后提交；
-// 嵌在 AddressBar 的 Box 内
-@Composable
-private fun SuggestDropdown(
-    rows: List<SuggestRow>,
-    onPick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column(modifier = Modifier.padding(top = 44.dp).padding(horizontal = 8.dp).padding(bottom = 4.dp)) {
-            rows.take(10).forEach { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onPick(row.text) }
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        when (row.kind) {
-                            SuggestRowKind.HISTORY -> Icons.Default.History
-                            else -> Icons.Default.Search
-                        }, "",
-                        modifier = Modifier.size(16.dp).padding(end = 10.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        row.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                )
-            }
-        }
-    }
-}
-
-private enum class SuggestRowKind { SEARCH, REMOTE, HISTORY }
-
-private data class SuggestRow(val text: String, val kind: SuggestRowKind)
 
 @Composable
 fun TabStrip(
