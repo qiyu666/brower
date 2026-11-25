@@ -5,6 +5,7 @@ import android.content.res.Resources
 import com.qiyu.browser.model.BrowserConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONArray
 
 class SettingsRepository(private val context: Context) {
 
@@ -12,6 +13,9 @@ class SettingsRepository(private val context: Context) {
 
     private val _config = MutableStateFlow(loadConfig())
     val config: StateFlow<BrowserConfig> = _config
+
+    private val _menuOrder = MutableStateFlow(loadMenuOrder())
+    val menuOrder: StateFlow<List<String>> = _menuOrder
 
     fun updateConfig(transform: (BrowserConfig) -> BrowserConfig) {
         _config.value = transform(_config.value)
@@ -28,6 +32,20 @@ class SettingsRepository(private val context: Context) {
     fun setSearchEngine(engine: String) = updateConfig { it.copy(searchEngine = engine) }
     fun setUseDesktopMode(enabled: Boolean) = updateConfig { it.copy(useDesktopMode = enabled) }
     fun setDownloadDir(dir: String) = updateConfig { it.copy(downloadDir = dir) }
+    fun setAiBaseUrl(url: String) = updateConfig { it.copy(aiBaseUrl = url) }
+    fun setAiApiKey(key: String) = updateConfig { it.copy(aiApiKey = key) }
+    fun setAiModel(model: String) = updateConfig { it.copy(aiModel = model) }
+
+    fun setMenuOrder(order: List<String>) {
+        _menuOrder.value = order
+        prefs.edit().putString("menu_order", JSONArray(order).toString()).apply()
+    }
+
+    /** 恢复默认菜单顺序 */
+    fun resetMenuOrder() {
+        _menuOrder.value = DEFAULT_MENU_ORDER
+        prefs.edit().remove("menu_order").apply()
+    }
 
     private fun loadConfig(): BrowserConfig {
         return BrowserConfig(
@@ -40,12 +58,38 @@ class SettingsRepository(private val context: Context) {
             blockPopups = prefs.getBoolean("block_popups", true),
             language = resolveLanguage(),
             useDesktopMode = prefs.getBoolean("use_desktop", false),
-            downloadDir = prefs.getString("download_dir", "default") ?: "default"
+            downloadDir = prefs.getString("download_dir", "default") ?: "default",
+            aiBaseUrl = prefs.getString("ai_base_url", "") ?: "",
+            aiApiKey = prefs.getString("ai_api_key", "") ?: "",
+            aiModel = prefs.getString("ai_model", "") ?: ""
         )
     }
 
-    /**
-     * 首次打开（尚无语言偏好）时自动识别系统语言环境并写入偏好；
+    /** 菜单项默认顺序（与溢出菜单定义一致；新增项在此追加，旧存档缺项时自动补全） */
+    companion object {
+        val DEFAULT_MENU_ORDER = listOf(
+            "bookmarks", "history", "downloads",
+            "ai_chat",
+            "incognito", "settings", "dev_tools", "share", "desktop_mode",
+            "traffic", "scan_qr", "clear_data", "copy_link"
+        )
+    }
+
+    /** 读取持久化的菜单顺序；过滤未知项、补全新增项，缺失/损坏时回落默认顺序 */
+    private fun loadMenuOrder(): List<String> {
+        val raw = prefs.getString("menu_order", null) ?: return DEFAULT_MENU_ORDER
+        val known = DEFAULT_MENU_ORDER
+        return try {
+            val arr = JSONArray(raw)
+            val saved = (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+            val ordered = saved.filter { it in known } + known.filter { it !in saved }
+            if (ordered.size != known.size || ordered.toSet().size != known.size) DEFAULT_MENU_ORDER else ordered
+        } catch (e: Exception) {
+            DEFAULT_MENU_ORDER
+        }
+    }
+
+    /** 首次打开（尚无语言偏好）时自动识别系统语言环境并写入偏好；
      * 之后以用户手动选择为准，不再覆盖。
      */
     private fun resolveLanguage(): String {
@@ -75,6 +119,9 @@ class SettingsRepository(private val context: Context) {
             putString("language", config.language)
             putBoolean("use_desktop", config.useDesktopMode)
             putString("download_dir", config.downloadDir)
+            putString("ai_base_url", config.aiBaseUrl)
+            putString("ai_api_key", config.aiApiKey)
+            putString("ai_model", config.aiModel)
         }.apply()
     }
 }

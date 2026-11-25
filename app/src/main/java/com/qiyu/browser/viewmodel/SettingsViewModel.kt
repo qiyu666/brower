@@ -12,6 +12,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val repo = (application as NovaBrowserApp).settingsRepository
 
     val config: StateFlow<BrowserConfig> = repo.config
+    val menuOrder: StateFlow<List<String>> = repo.menuOrder
 
     /** 真实版本号（跟 build.gradle 的 versionName 同步，避免写死） */
     val versionName: String = try {
@@ -37,4 +38,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setSearchEngine(engine: String) = repo.setSearchEngine(engine)
     fun setUseDesktopMode(enabled: Boolean) = repo.setUseDesktopMode(enabled)
     fun setDownloadDir(dir: String) = repo.setDownloadDir(dir)
+    fun setAiBaseUrl(url: String) = repo.setAiBaseUrl(url)
+    fun setAiApiKey(key: String) = repo.setAiApiKey(key)
+    fun setAiModel(model: String) = repo.setAiModel(model)
+    fun setMenuOrder(order: List<String>) = repo.setMenuOrder(order)
+    fun resetMenuOrder() = repo.resetMenuOrder()
 }

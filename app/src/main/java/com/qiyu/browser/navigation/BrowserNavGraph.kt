@@ -17,6 +17,7 @@ object Destinations {
     const val SETTINGS = "settings"
     const val DEV = "dev"
     const val PASSWORDS = "passwords"
+    const val AI_CHAT = "ai_chat"
 }
 
 @Composable
@@ -55,7 +56,8 @@ fun BrowserNavHost(
                 onShare = onShare,
                 onScanQr = onScanQr,
                 onClearData = onClearData,
-                onDev = { navController.navigate(Destinations.DEV) }
+                onDev = { navController.navigate(Destinations.DEV) },
+                onNavigateToAiChat = { navController.navigate(Destinations.AI_CHAT) }
             )
         }
         composable(Destinations.BOOKMARKS) {
@@ -105,6 +107,12 @@ fun BrowserNavHost(
             PasswordsScreen(
                 store = webManager.credentialStore,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Destinations.AI_CHAT) {
+            AiChatScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) }
             )
         }
     }

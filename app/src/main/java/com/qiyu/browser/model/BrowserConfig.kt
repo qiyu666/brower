@@ -10,5 +10,8 @@ data class BrowserConfig(
     val blockPopups: Boolean = true,
     val language: String = "en",
     val useDesktopMode: Boolean = false,
-    val downloadDir: String = "default"
+    val downloadDir: String = "default",
+    val aiBaseUrl: String = "",
+    val aiApiKey: String = "",
+    val aiModel: String = ""
 )

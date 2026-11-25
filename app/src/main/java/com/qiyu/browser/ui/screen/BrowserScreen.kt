@@ -1,6 +1,8 @@
 package com.qiyu.browser.ui.screen
 
 import android.widget.FrameLayout
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
@@ -81,6 +83,7 @@ fun BrowserScreen(
     onScanQr: () -> Unit,
     onClearData: (Boolean, Boolean, Boolean) -> Unit,
     onDev: () -> Unit,
+    onNavigateToAiChat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs by tabsVM.tabs.collectAsStateWithLifecycle()
@@ -99,6 +102,7 @@ fun BrowserScreen(
     var clearSelCache by remember { mutableStateOf(true) }
     val isBookmarked by bookmarksVM.isBookmarked.collectAsStateWithLifecycle()
     val config by settingsVM.config.collectAsStateWithLifecycle()
+    val menuOrder by settingsVM.menuOrder.collectAsStateWithLifecycle()
     val recentItems by historyVM.recentItems.collectAsStateWithLifecycle()
     var prevTabId by remember { mutableStateOf<Int?>(null) }
     val showNewTab = (barTab?.url.isNullOrEmpty() || barTab?.url == "about:blank")
@@ -566,7 +570,14 @@ fun BrowserScreen(
                         settingsVM.setUseDesktopMode(!config.useDesktopMode)
                         showMenu = false
                     },
-                    desktopActive = config.useDesktopMode
+                    desktopActive = config.useDesktopMode,
+                    menuOrder = menuOrder,
+                    onMenuOrderChanged = { settingsVM.setMenuOrder(it) },
+                    onMenuOrderReset = { settingsVM.resetMenuOrder() },
+                    onAiChat = {
+                        onNavigateToAiChat()
+                        showMenu = false
+                    }
                 )
             }
         }
@@ -698,7 +709,9 @@ fun TabSwitcherOverlay(
     }
 }
 
-/** 底部菜单面板：拖拽把手 + 图标网格（上排主色/常用，下排常规），仿 Chrome 溢出菜单 */
+private class MenuDef(val key: String, val icon: ImageVector, val labelKey: String, val onClick: () -> Unit)
+
+/** 底部菜单面板：图标网格（每行 4 个）。长按任一项进入排序，点按其它项交换位置，完成/恢复默认后持久化 */
 @Composable
 private fun OverflowMenuSheet(
     onBookmarks: () -> Unit,
@@ -706,104 +719,158 @@ private fun OverflowMenuSheet(
     onDownloads: () -> Unit,
     onIncognito: () -> Unit,
     onSettings: () -> Unit,
+    onDev: () -> Unit,
     onShare: () -> Unit,
+    onDesktopMode: () -> Unit,
     onTraffic: () -> Unit,
     onScanQr: () -> Unit,
     onClearData: () -> Unit,
-    onDev: () -> Unit,
     onCopyLink: () -> Unit,
-    onDesktopMode: () -> Unit,
-    desktopActive: Boolean
+    desktopActive: Boolean,
+    menuOrder: List<String>,
+    onMenuOrderChanged: (List<String>) -> Unit,
+    onMenuOrderReset: () -> Unit,
+    onAiChat: () -> Unit
 ) {
+    val defs = listOf(
+        MenuDef("bookmarks", Icons.Filled.Star, "bookmarks", onBookmarks),
+        MenuDef("history", Icons.Filled.History, "history", onHistory),
+        MenuDef("downloads", Icons.Filled.Download, "downloads", onDownloads),
+        MenuDef("ai_chat", Icons.Filled.AutoAwesome, "ai_chat", onAiChat),
+        MenuDef("incognito", Icons.Filled.Face, "incognito", onIncognito),
+        MenuDef("settings", Icons.Filled.Settings, "settings", onSettings),
+        MenuDef("dev_tools", Icons.Filled.Code, "dev_tools", onDev),
+        MenuDef("share", Icons.Filled.Share, "share", onShare),
+        MenuDef("desktop_mode", Icons.Filled.Computer, "desktop_mode", onDesktopMode),
+        MenuDef("traffic", Icons.Filled.DataUsage, "traffic", onTraffic),
+        MenuDef("scan_qr", Icons.Filled.QrCode, "scan_qr", onScanQr),
+        MenuDef("clear_data", Icons.Filled.CleaningServices, "clear_data", onClearData),
+        MenuDef("copy_link", Icons.Filled.Link, "copy_link", onCopyLink),
+    )
+
+    var reorderMode by remember { mutableStateOf(false) }
+    var orderState by remember { mutableStateOf<List<String>?>(null) }
+    var selIndex by remember { mutableIntStateOf(-1) }
+
+    val activeOrder = orderState ?: menuOrder
+    val ordered = activeOrder.mapNotNull { k -> defs.firstOrNull { it.key == k } }
+        .let { it + defs.filter { d -> d.key !in activeOrder } }
+    val rows = ordered.chunked(4)
+
+    fun enterReorder() {
+        if (!reorderMode) { orderState = menuOrder; reorderMode = true; selIndex = -1 }
+    }
+    fun finishReorder() {
+        orderState?.let { onMenuOrderChanged(it) }
+        reorderMode = false; orderState = null; selIndex = -1
+    }
+    fun resetReorder() {
+        onMenuOrderReset(); reorderMode = false; orderState = null; selIndex = -1
+    }
+    fun onCellTap(index: Int) {
+        if (selIndex < 0) { selIndex = index; return }
+        val list = (orderState ?: menuOrder).toMutableList()
+        val tmp = list[selIndex]; list[selIndex] = list[index]; list[index] = tmp
+        orderState = list; selIndex = index
+    }
+
     Column(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(top = 12.dp, bottom = 28.dp)
     ) {
-        // 拖拽把手
         Box(
-            modifier = Modifier
+            Modifier
                 .size(width = 32.dp, height = 4.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 .align(Alignment.CenterHorizontally)
         )
-        Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            GridMenuItem(Icons.Filled.Star, AppStrings.t("bookmarks"), accent = true, modifier = Modifier.weight(1f), onClick = onBookmarks)
-            GridMenuItem(Icons.Filled.History, AppStrings.t("history"), accent = true, modifier = Modifier.weight(1f), onClick = onHistory)
-            GridMenuItem(Icons.Filled.Download, AppStrings.t("downloads"), accent = true, modifier = Modifier.weight(1f), onClick = onDownloads)
-        }
         Spacer(Modifier.height(12.dp))
-        // 分隔线
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-        )
-        Spacer(Modifier.height(12.dp))
-        // 常规操作第一行：一屏 4 个，右滑看第 5 个（电脑版）
-        androidx.compose.foundation.lazy.LazyRow(
-            Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item { GridMenuItem(Icons.Filled.Face, AppStrings.t("incognito"), modifier = Modifier.width(64.dp), onClick = onIncognito) }
-            item { GridMenuItem(Icons.Filled.Settings, AppStrings.t("settings"), modifier = Modifier.width(64.dp), onClick = onSettings) }
-            item { GridMenuItem(Icons.Filled.Code, AppStrings.t("dev_tools"), modifier = Modifier.width(64.dp), onClick = onDev) }
-            item { GridMenuItem(Icons.Filled.Share, AppStrings.t("share"), modifier = Modifier.width(64.dp), onClick = onShare) }
-            item { GridMenuItem(Icons.Filled.Computer, AppStrings.t("desktop_mode"), accent = desktopActive, modifier = Modifier.width(64.dp), onClick = onDesktopMode) }
+        if (reorderMode) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(AppStrings.t("menu_reorder_hint"), modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                TextButton(onClick = { resetReorder() }) { Text(AppStrings.t("menu_reset")) }
+                TextButton(onClick = { finishReorder() }) { Text(AppStrings.t("done")) }
+            }
+            Spacer(Modifier.height(4.dp))
         }
-        Spacer(Modifier.height(4.dp))
-        // 常规操作第二行：流量/扫码/清理数据/复制链接
-        androidx.compose.foundation.lazy.LazyRow(
-            Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item { GridMenuItem(Icons.Filled.DataUsage, AppStrings.t("traffic"), modifier = Modifier.width(64.dp), onClick = onTraffic) }
-            item { GridMenuItem(Icons.Filled.QrCode, AppStrings.t("scan_qr"), modifier = Modifier.width(64.dp), onClick = onScanQr) }
-            item { GridMenuItem(Icons.Filled.CleaningServices, AppStrings.t("clear_data"), modifier = Modifier.width(64.dp), onClick = onClearData) }
-            item { GridMenuItem(Icons.Filled.Link, AppStrings.t("copy_link"), modifier = Modifier.width(64.dp), onClick = onCopyLink) }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            rows.forEachIndexed { r, row ->
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    row.forEachIndexed { c, def ->
+                        val g = r * 4 + c
+                        GridMenuItem(
+                            icon = def.icon,
+                            label = AppStrings.t(def.labelKey),
+                            accent = def.key == "desktop_mode" && desktopActive,
+                            selected = selIndex == g,
+                            badge = if (reorderMode) g + 1 else null,
+                            modifier = Modifier.weight(1f),
+                            onClick = { if (reorderMode) onCellTap(g) else def.onClick() },
+                            onLongClick = { enterReorder() }
+                        )
+                    }
+                    repeat((4 - row.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         }
     }
 }
-
-/** 网格单元格：图标在上、标签在下，整格可点 */
 @Composable
 private fun GridMenuItem(
     icon: ImageVector,
     label: String,
     accent: Boolean = false,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    selected: Boolean = false,
+    badge: Int? = null,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Column(
         modifier = modifier
-            .clickable(onClick = onClick)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                RoundedCornerShape(12.dp)
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(vertical = 10.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (accent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            modifier = Modifier.size(24.dp)
-        )
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (accent || selected) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                modifier = Modifier.size(24.dp)
+            )
+            if (badge != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(badge.toString(), color = Color.White,
+                        style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Text(label, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
-
 @Composable
 private fun TabCard2(
     tab: com.qiyu.browser.model.TabItem,

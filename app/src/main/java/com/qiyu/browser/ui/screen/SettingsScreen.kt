@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import com.qiyu.browser.util.AiClient
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,15 @@ fun SettingsScreen(
     var engineDialog by remember { mutableStateOf(false) }
     var langDialog by remember { mutableStateOf(false) }
     var downloadDirDialog by remember { mutableStateOf(false) }
+    var aiUrlDialog by remember { mutableStateOf(false) }
+    var aiKeyDialog by remember { mutableStateOf(false) }
+    var aiModelDialog by remember { mutableStateOf(false) }
+    var aiUrlInput by remember { mutableStateOf(config.aiBaseUrl) }
+    var aiKeyInput by remember { mutableStateOf(config.aiApiKey) }
+    var aiCustomModel by remember { mutableStateOf(config.aiModel) }
+    var aiModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var aiFetching by remember { mutableStateOf(false) }
+    var aiModelError by remember { mutableStateOf<String?>(null) }
     var updateState by remember { mutableStateOf<UpdateCheckState>(UpdateCheckState.Idle) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -95,6 +106,20 @@ fun SettingsScreen(
         }
     }
 
+    fun doFetch(url: String, key: String) {
+    if (url.isBlank()) { aiModelError = AppStrings.t("ai_need_url"); return }
+    aiFetching = true; aiModelError = null
+    scope.launch {
+        try {
+            val list = AiClient.fetchModels(url, key)
+            aiModels = list
+            if (list.isNotEmpty() && config.aiModel.isBlank()) viewModel.setAiModel(list.first())
+        } catch (e: Exception) {
+            aiModelError = e.message
+        }
+        aiFetching = false
+    }
+}
     var installPermPending by remember { mutableStateOf(false) }
 
     /** 查安装权限：未声明 REQUEST_INSTALL_PACKAGES 时系统会抛 SecurityException，必须包一层 */
@@ -424,6 +449,39 @@ fun SettingsScreen(
                 downloadDirDialog = true
             }
 
+            // AI 助手
+Spacer(modifier = Modifier.height(16.dp))
+SectionTitle(AppStrings.t("ai_assistant"))
+SettingRow(
+    icon = { Icon(Icons.Default.Cloud, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_base_url"),
+    value = config.aiBaseUrl.ifEmpty { AppStrings.t("ai_unset") }
+) {
+    aiUrlInput = config.aiBaseUrl; aiUrlDialog = true
+}
+SettingRow(
+    icon = { Icon(Icons.Default.Key, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_api_key"),
+    value = if (config.aiApiKey.isBlank()) AppStrings.t("ai_unset") else "••••"
+) {
+    aiKeyInput = config.aiApiKey; aiKeyDialog = true
+}
+SettingRow(
+    icon = { Icon(Icons.Default.Extension, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_model"),
+    value = config.aiModel.ifEmpty { AppStrings.t("ai_model_none") }
+) {
+    aiCustomModel = config.aiModel; aiModelDialog = true
+}
+SettingRow(
+    icon = { Icon(Icons.Default.Refresh, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_fetch"),
+    value = if (aiFetching) AppStrings.t("ai_fetching") else ""
+) {
+    doFetch(config.aiBaseUrl, config.aiApiKey)
+}
+
+
             // Homepage
             Spacer(modifier = Modifier.height(16.dp))
             SectionTitle(AppStrings.t("homepage"))
@@ -623,4 +681,100 @@ private fun SettingRow(
         Text(value, style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary)
     }
+    if (aiUrlDialog) {
+        AlertDialog(
+            onDismissRequest = { aiUrlDialog = false },
+            title = { Text(AppStrings.t("ai_base_url")) },
+            text = {
+                Column {
+                    Text(AppStrings.t("ai_url_hint"), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = aiUrlInput, onValueChange = { aiUrlInput = it }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val u = aiUrlInput.trim()
+                    if (u.isNotEmpty()) { viewModel.setAiBaseUrl(u); aiModels = emptyList(); doFetch(u, config.aiApiKey) }
+                    aiUrlDialog = false
+                }) { Text(AppStrings.t("ai_fetch")) }
+            },
+            dismissButton = { TextButton(onClick = { aiUrlDialog = false }) { Text(AppStrings.t("cancel")) } }
+        )
+    }
+
+    if (aiKeyDialog) {
+        AlertDialog(
+            onDismissRequest = { aiKeyDialog = false },
+            title = { Text(AppStrings.t("ai_api_key")) },
+            text = { OutlinedTextField(value = aiKeyInput, onValueChange = { aiKeyInput = it }, singleLine = true) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.setAiApiKey(aiKeyInput.trim()); aiKeyDialog = false }) {
+                    Text(AppStrings.t("save"))
+                }
+            },
+            dismissButton = { TextButton(onClick = { aiKeyDialog = false }) { Text(AppStrings.t("cancel")) } }
+        )
+    }
+
+    if (aiModelDialog) {
+        AlertDialog(
+            onDismissRequest = { aiModelDialog = false },
+            title = { Text(AppStrings.t("ai_model")) },
+            text = {
+                Column(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { doFetch(config.aiBaseUrl, config.aiApiKey) }) {
+                            Text(if (aiFetching) AppStrings.t("ai_fetching") else AppStrings.t("ai_fetch"))
+                        }
+                        if (aiFetching) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    }
+                    if (aiModelError != null) {
+                        Text(aiModelError!!, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                    if (aiModels.isEmpty() && !aiFetching) {
+                        Text(AppStrings.t("ai_model_empty"), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    }
+                    if (aiModels.isNotEmpty()) {
+                        Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                            aiModels.forEach { m ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        viewModel.setAiModel(m); aiModelDialog = false
+                                    }.padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (config.aiModel == m) {
+                                        Icon(Icons.Default.Check, "", tint = MaterialTheme.colorScheme.primary)
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text(m, style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = aiCustomModel,
+                        onValueChange = { aiCustomModel = it },
+                        singleLine = true,
+                        placeholder = { Text(AppStrings.t("ai_custom_model")) }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val m = aiCustomModel.trim()
+                    if (m.isNotEmpty()) viewModel.setAiModel(m)
+                    aiModelDialog = false
+                }) { Text(AppStrings.t("save")) }
+            }
+        )
+    }
+
 }
