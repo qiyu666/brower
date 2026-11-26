@@ -635,16 +635,6 @@ SettingRow(
             confirmButton = {}
         )
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
     if (aiUrlDialog) {
         AlertDialog(
             onDismissRequest = { aiUrlDialog = false },
@@ -740,6 +730,16 @@ private fun SectionTitle(text: String) {
             }
         )
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 8.dp)
+    )
 }
 
 /** 手动检查更新的状态机（点“版本”行触发；不用 sealed：当前构建环境的编译器对 sealed 嵌套 object 的子类型判定有兼容问题） */
