@@ -1,14 +1,19 @@
 package com.qiyu.browser.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
@@ -21,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.qiyu.browser.model.Conversation
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.viewmodel.AiChatViewModel
 import kotlinx.coroutines.launch
@@ -37,10 +43,13 @@ fun AiChatScreen(
     val streamingText by vm.streamingText.collectAsStateWithLifecycle()
     val streaming by vm.streaming.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
+    val conversations by vm.conversations.collectAsStateWithLifecycle()
+    val currentId by vm.currentId.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val appModel = (context.applicationContext as com.qiyu.browser.NovaBrowserApp).settingsRepository.config.value.aiModel
     val configured = vm.isConfigured()
     var input by remember { mutableStateOf("") }
+    var showList by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -67,10 +76,13 @@ fun AiChatScreen(
                     Text(appModel, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 120.dp))
+                        modifier = Modifier.widthIn(max = 100.dp))
                 }
-                IconButton(onClick = { vm.clear() }, enabled = messages.isNotEmpty() || streaming) {
-                    Icon(Icons.Default.Delete, AppStrings.t("clear"))
+                IconButton(onClick = { showList = true }) {
+                    Icon(Icons.Filled.Chat, AppStrings.t("ai_conversations"))
+                }
+                IconButton(onClick = { vm.newConversation() }) {
+                    Icon(Icons.Filled.Add, AppStrings.t("ai_new_chat"))
                 }
             }
         }
@@ -136,6 +148,81 @@ fun AiChatScreen(
                         },
                         enabled = configured && input.isNotBlank()
                     ) { Icon(Icons.Default.Send, AppStrings.t("ai_send")) }
+                }
+            }
+        }
+    }
+
+    if (showList) {
+        ConversationDialog(
+            conversations = conversations,
+            currentId = currentId,
+            onPick = { id -> vm.switchConversation(id); showList = false },
+            onNew = { vm.newConversation(); showList = false },
+            onDelete = { id -> scope.launch { vm.deleteConversation(id) } },
+            onClose = { showList = false }
+        )
+    }
+}
+
+@Composable
+private fun ConversationDialog(
+    conversations: List<Conversation>,
+    currentId: Long?,
+    onPick: (Long) -> Unit,
+    onNew: () -> Unit,
+    onDelete: (Long) -> Unit,
+    onClose: () -> Unit
+) {
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    AppStrings.t("ai_conversations"),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onNew) { Icon(Icons.Filled.Add, AppStrings.t("ai_new_chat")) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(20.dp)) }
+            }
+            if (conversations.isEmpty()) {
+                Text(AppStrings.t("ai_no_conversations"), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(vertical = 24.dp))
+            } else {
+                Column(Modifier.fillMaxWidth().heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    conversations.forEach { c ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(c.id) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                c.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (c.id == currentId) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { onDelete(c.id) }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    Icons.Filled.Delete, null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -22,8 +22,8 @@ android {
         applicationId = "com.qiyu.browser"
         minSdk = 26
         targetSdk = 34
-        versionCode = 36
-        versionName = "1.7.13"
+        versionCode = 37
+        versionName = "1.8.0"
     }
 
     buildTypes {

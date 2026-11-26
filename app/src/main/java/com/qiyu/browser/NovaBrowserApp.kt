@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Process
 import com.qiyu.browser.data.local.AppDatabase
 import com.qiyu.browser.data.repository.BookmarkRepository
+import com.qiyu.browser.data.repository.ConversationRepository
 import com.qiyu.browser.data.repository.DownloadRepository
 import com.qiyu.browser.data.repository.HistoryRepository
 import com.qiyu.browser.data.repository.SettingsRepository
@@ -19,6 +20,7 @@ class NovaBrowserApp : Application() {
     lateinit var historyRepository: HistoryRepository
     lateinit var downloadRepository: DownloadRepository
     lateinit var settingsRepository: SettingsRepository
+lateinit var conversationRepository: ConversationRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -27,6 +29,7 @@ class NovaBrowserApp : Application() {
         historyRepository = HistoryRepository(database.historyDao())
         downloadRepository = DownloadRepository(database.downloadDao())
         settingsRepository = SettingsRepository(this)
+conversationRepository = ConversationRepository(database.conversationDao())
         AppStrings.setLanguage(settingsRepository.config.value.language)
         installCrashHandler()
     }
