@@ -86,7 +86,7 @@ object AiClient {
                     if (data == "[DONE]") break
                     try {
                         val obj = JSONObject(data)
-                        val delta = obj.optJSONObject("choices")
+                        val delta = obj.optJSONArray("choices")
                             ?.optJSONObject(0)
                             ?.optJSONObject("delta")
                             ?.optString("content", "") ?: ""

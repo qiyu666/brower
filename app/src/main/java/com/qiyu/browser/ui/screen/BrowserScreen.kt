@@ -2,6 +2,7 @@ package com.qiyu.browser.ui.screen
 
 import android.widget.FrameLayout
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -825,6 +826,7 @@ private fun OverflowMenuSheet(
     }
 }
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun GridMenuItem(
     icon: ImageVector,
     label: String,

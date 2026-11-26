@@ -645,42 +645,6 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp)
     )
-}
-
-/** 手动检查更新的状态机（点“版本”行触发；不用 sealed：当前构建环境的编译器对 sealed 嵌套 object 的子类型判定有兼容问题） */
-private interface UpdateCheckState {
-    object Idle : UpdateCheckState
-    object Checking : UpdateCheckState
-    data class UpToDate(val latestVersion: String) : UpdateCheckState
-    data class NewVersion(val info: UpdateChecker.UpdateInfo) : UpdateCheckState
-    data class Downloading(val info: UpdateChecker.UpdateInfo, val progress: Int) : UpdateCheckState
-    data class ReadyToInstall(val file: File, val version: String) : UpdateCheckState
-    data class Failed(val message: String) : UpdateCheckState
-}
-
-@Composable
-private fun SettingRow(
-    icon: @Composable () -> Unit = {},
-    title: String,
-    value: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        icon()
-        if (icon != {}) Spacer(modifier = Modifier.width(12.dp))
-        Text(title, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface)
-        Text(value, style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary)
-    }
     if (aiUrlDialog) {
         AlertDialog(
             onDismissRequest = { aiUrlDialog = false },
@@ -776,5 +740,40 @@ private fun SettingRow(
             }
         )
     }
+}
 
+/** 手动检查更新的状态机（点“版本”行触发；不用 sealed：当前构建环境的编译器对 sealed 嵌套 object 的子类型判定有兼容问题） */
+private interface UpdateCheckState {
+    object Idle : UpdateCheckState
+    object Checking : UpdateCheckState
+    data class UpToDate(val latestVersion: String) : UpdateCheckState
+    data class NewVersion(val info: UpdateChecker.UpdateInfo) : UpdateCheckState
+    data class Downloading(val info: UpdateChecker.UpdateInfo, val progress: Int) : UpdateCheckState
+    data class ReadyToInstall(val file: File, val version: String) : UpdateCheckState
+    data class Failed(val message: String) : UpdateCheckState
+}
+
+@Composable
+private fun SettingRow(
+    icon: @Composable () -> Unit = {},
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+        if (icon != {}) Spacer(modifier = Modifier.width(12.dp))
+        Text(title, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface)
+        Text(value, style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary)
+    }
 }
