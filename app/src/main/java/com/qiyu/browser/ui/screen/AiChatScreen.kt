@@ -191,7 +191,7 @@ fun AiChatScreen(
             activeId = activeProviderId,
             onSwitch = { vm.switchProvider(it) },
             onFetchModels = { prov -> vm.fetchModels(prov, { modelList = it }, { _ -> }) },
-            onAdd = { showAddProvider = true },
+            onAdd = { showPicker = false; onNavigateToSettings() },
             onDelete = { vm.deleteProvider(it) },
             onClose = { showPicker = false }
         )

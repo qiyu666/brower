@@ -75,6 +75,12 @@ class SettingsRepository(private val context: Context) {
         prefs.edit().putLong("ai_active_provider", id).apply()
     }
 
+    fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) {
+        val id = System.currentTimeMillis()
+        upsertProvider(ModelProvider(id, name.ifBlank { "自定义" }, baseUrl, apiKey, model, false))
+        setActiveProvider(id)
+    }
+
     private fun saveProviders(list: List<ModelProvider>) {
         val arr = JSONArray()
         for (p in list) {

@@ -2,6 +2,7 @@ package com.qiyu.browser.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.qiyu.browser.model.ModelProvider
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import com.qiyu.browser.util.AiClient
@@ -41,6 +42,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
+    val providers by viewModel.providers.collectAsStateWithLifecycle()
+    val activeProviderId by viewModel.activeProviderId.collectAsStateWithLifecycle()
     var homeInput by remember { mutableStateOf(config.homePage) }
     var engineDialog by remember { mutableStateOf(false) }
     var langDialog by remember { mutableStateOf(false) }
@@ -54,6 +57,8 @@ fun SettingsScreen(
     var aiModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var aiFetching by remember { mutableStateOf(false) }
     var aiModelError by remember { mutableStateOf<String?>(null) }
+    var addProviderDialog by remember { mutableStateOf(false) }
+    var providerListDialog by remember { mutableStateOf(false) }
     var updateState by remember { mutableStateOf<UpdateCheckState>(UpdateCheckState.Idle) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -480,6 +485,20 @@ SettingRow(
 ) {
     doFetch(config.aiBaseUrl, config.aiApiKey)
 }
+SettingRow(
+    icon = { Icon(Icons.Default.Cloud, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_model_provider"),
+    value = providers.find { it.id == activeProviderId }?.let { it.name + " · " + it.model } ?: ""
+) {
+    providerListDialog = true
+}
+SettingRow(
+    icon = { Icon(Icons.Default.Add, "", modifier = Modifier.size(20.dp)) },
+    title = AppStrings.t("ai_add_provider"),
+    value = ""
+) {
+    addProviderDialog = true
+}
 
 
             // Homepage
@@ -635,6 +654,21 @@ SettingRow(
             confirmButton = {}
         )
     }
+    if (addProviderDialog) {
+        AddProviderDialog(
+            onAdd = { n, u, k, m -> viewModel.addProvider(n, u, k, m); addProviderDialog = false },
+            onClose = { addProviderDialog = false }
+        )
+    }
+    if (providerListDialog) {
+        ProviderListDialog(
+            providers = providers,
+            activeId = activeProviderId,
+            onSwitch = { viewModel.setActiveProvider(it) },
+            onDelete = { viewModel.deleteProvider(it) },
+            onClose = { providerListDialog = false }
+        )
+    }
     if (aiUrlDialog) {
         AlertDialog(
             onDismissRequest = { aiUrlDialog = false },
@@ -776,4 +810,76 @@ private fun SettingRow(
         Text(value, style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary)
     }
+}
+
+@Composable
+private fun AddProviderDialog(onAdd: (String, String, String, String) -> Unit, onClose: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var baseUrl by remember { mutableStateOf("") }
+    var apiKey by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { onClose() },
+        title = { Text(AppStrings.t("ai_add_provider")) },
+        text = {
+            Column {
+                OutlinedTextField(name, { name = it }, label = { Text(AppStrings.t("ai_provider_name")) }, singleLine = true)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(baseUrl, { baseUrl = it }, label = { Text(AppStrings.t("ai_base_url")) }, singleLine = true)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(apiKey, { apiKey = it }, label = { Text(AppStrings.t("ai_api_key")) }, singleLine = true)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(model, { model = it }, label = { Text(AppStrings.t("ai_model")) }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (baseUrl.isNotBlank() || model.isNotBlank()) onAdd(name, baseUrl, apiKey, model) }) {
+                Text(AppStrings.t("ai_save"))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onClose() }) { Text(AppStrings.t("ai_cancel")) }
+        }
+    )
+}
+
+@Composable
+private fun ProviderListDialog(
+    providers: List<ModelProvider>,
+    activeId: Long,
+    onSwitch: (Long) -> Unit,
+    onDelete: (Long) -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onClose() },
+        title = { Text(AppStrings.t("ai_model_provider")) },
+        text = {
+            Column {
+                providers.forEach { p ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onSwitch(p.id) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name + if (p.id == activeId) " ✓" else "",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (p.id == activeId) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface)
+                            Text(p.model.ifBlank { p.baseUrl }, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        if (!p.builtin) {
+                            IconButton(onClick = { onDelete(p.id) }) {
+                                Icon(Icons.Filled.Delete, null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onClose() }) { Text(AppStrings.t("ai_close")) } }
+    )
 }

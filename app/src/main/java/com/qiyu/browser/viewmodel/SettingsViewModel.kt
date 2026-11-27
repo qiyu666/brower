@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.qiyu.browser.NovaBrowserApp
 import com.qiyu.browser.model.BrowserConfig
+import com.qiyu.browser.model.ModelProvider
 import com.qiyu.browser.util.AppStrings
 import kotlinx.coroutines.flow.StateFlow
 
@@ -13,6 +14,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val config: StateFlow<BrowserConfig> = repo.config
     val menuOrder: StateFlow<List<String>> = repo.menuOrder
+    val providers: StateFlow<List<ModelProvider>> = repo.providers
+    val activeProviderId: StateFlow<Long> = repo.activeProviderId
 
     /** 真实版本号（跟 build.gradle 的 versionName 同步，避免写死） */
     val versionName: String = try {
@@ -43,4 +46,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setAiModel(model: String) = repo.setAiModel(model)
     fun setMenuOrder(order: List<String>) = repo.setMenuOrder(order)
     fun resetMenuOrder() = repo.resetMenuOrder()
+    fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) = repo.addProvider(name, baseUrl, apiKey, model)
+    fun deleteProvider(id: Long) = repo.deleteProvider(id)
+    fun setActiveProvider(id: Long) = repo.setActiveProvider(id)
 }
