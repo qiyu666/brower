@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qiyu.browser.model.Conversation
+import com.qiyu.browser.model.ModelProvider
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.viewmodel.AiChatViewModel
 import kotlinx.coroutines.launch
@@ -46,11 +47,15 @@ fun AiChatScreen(
     val error by vm.error.collectAsStateWithLifecycle()
     val conversations by vm.conversations.collectAsStateWithLifecycle()
     val currentId by vm.currentId.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val appModel = (context.applicationContext as com.qiyu.browser.NovaBrowserApp).settingsRepository.config.value.aiModel
+    val activeProvider by vm.activeProvider.collectAsStateWithLifecycle()
+    val providers by vm.providers.collectAsStateWithLifecycle()
+    val activeProviderId by vm.activeProviderId.collectAsStateWithLifecycle()
     val configured = vm.isConfigured()
     var input by remember { mutableStateOf("") }
     var showList by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
+    var modelList by remember { mutableStateOf<List<String>?>(null) }
+    var showAddProvider by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -73,11 +78,26 @@ fun AiChatScreen(
                 Spacer(Modifier.width(8.dp))
                 Text(AppStrings.t("ai_chat"), style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f))
-                if (appModel.isNotBlank()) {
-                    Text(appModel, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                Row(
+                    modifier = Modifier
+                        .clickable { showPicker = true }
+                        .widthIn(max = 150.dp)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val prov = activeProvider
+                    Text(prov?.name ?: AppStrings.t("ai_select_model"), style = MaterialTheme.typography.labelSmall,
+                        color = if (prov != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 100.dp))
+                        modifier = Modifier.weight(1f, fill = false))
+                    if (prov != null && prov.model.isNotBlank()) {
+                        Spacer(Modifier.width(4.dp))
+                        Text(prov.model, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false))
+                    }
                 }
                 IconButton(onClick = { showList = true }) {
                     Icon(Icons.Filled.Chat, AppStrings.t("ai_conversations"))
@@ -164,6 +184,31 @@ fun AiChatScreen(
             onClose = { showList = false }
         )
     }
+
+    if (showPicker) {
+        ProviderPicker(
+            providers = providers,
+            activeId = activeProviderId,
+            onSwitch = { vm.switchProvider(it) },
+            onFetchModels = { prov -> vm.fetchModels(prov, { modelList = it }, { _ -> }) },
+            onAdd = { showAddProvider = true },
+            onDelete = { vm.deleteProvider(it) },
+            onClose = { showPicker = false }
+        )
+    }
+    if (modelList != null && activeProviderId != 0L) {
+        ModelListDialog(
+            models = modelList ?: emptyList(),
+            onPick = { m -> vm.setProviderModel(activeProviderId, m); modelList = null },
+            onClose = { modelList = null }
+        )
+    }
+    if (showAddProvider) {
+        AddProviderDialog(
+            onAdd = { n, u, k, m -> vm.addProvider(n, u, k, m); showAddProvider = false },
+            onClose = { showAddProvider = false }
+        )
+    }
 }
 
 @Composable
@@ -246,5 +291,137 @@ private fun Bubble(content: String, isUser: Boolean, streaming: Boolean = false)
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         )
+    }
+}
+
+@Composable
+private fun ProviderPicker(
+    providers: List<ModelProvider>,
+    activeId: Long,
+    onSwitch: (Long) -> Unit,
+    onFetchModels: (ModelProvider) -> Unit,
+    onAdd: () -> Unit,
+    onDelete: (Long) -> Unit,
+    onClose: () -> Unit
+) {
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+                .padding(12.dp)
+        ) {
+            Text(AppStrings.t("ai_model_provider"), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp))
+            Column(Modifier.fillMaxWidth().heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
+                providers.forEach { p ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onSwitch(p.id) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.AutoAwesome, null,
+                            tint = if (p.id == activeId) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name, style = MaterialTheme.typography.bodyLarge,
+                                color = if (p.id == activeId) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface)
+                            Text(p.model.ifBlank { p.baseUrl }, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        if (!p.builtin) {
+                            IconButton(onClick = { onDelete(p.id) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Filled.Delete, null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    if (p.id == activeId) {
+                        Row(Modifier.fillMaxWidth().padding(start = 26.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(AppStrings.t("ai_model"), style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.weight(1f))
+                            TextButton(onClick = { onFetchModels(p) }) { Text(AppStrings.t("ai_fetch")) }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onAdd) { Text(AppStrings.t("ai_add_provider")) }
+                TextButton(onClick = onClose) { Text(AppStrings.t("ai_close")) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModelListDialog(models: List<String>, onPick: (String) -> Unit, onClose: () -> Unit) {
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+                .padding(12.dp)
+        ) {
+            Text(AppStrings.t("ai_fetch"), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp))
+            if (models.isEmpty()) {
+                Text(AppStrings.t("ai_no_models"), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(vertical = 16.dp))
+            } else {
+                Column(Modifier.fillMaxWidth().heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    models.forEach { m ->
+                        Row(Modifier.fillMaxWidth().clickable { onPick(m) }.padding(vertical = 8.dp)) {
+                            Text(m, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            TextButton(onClick = onClose, modifier = Modifier.align(Alignment.End)) { Text(AppStrings.t("ai_close")) }
+        }
+    }
+}
+
+@Composable
+private fun AddProviderDialog(onAdd: (String, String, String, String) -> Unit, onClose: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var baseUrl by remember { mutableStateOf("") }
+    var apiKey by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+                .padding(12.dp)
+        ) {
+            Text(AppStrings.t("ai_add_provider"), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp))
+            OutlinedTextField(name, { name = it }, label = { Text(AppStrings.t("ai_provider_name")) },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(baseUrl, { baseUrl = it }, label = { Text(AppStrings.t("ai_base_url")) },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(apiKey, { apiKey = it }, label = { Text(AppStrings.t("ai_api_key")) },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(model, { model = it }, label = { Text(AppStrings.t("ai_model")) },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onClose) { Text(AppStrings.t("ai_cancel")) }
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = { if (baseUrl.isNotBlank() || model.isNotBlank()) onAdd(name, baseUrl, apiKey, model) }) {
+                    Text(AppStrings.t("ai_save"))
+                }
+            }
+        }
     }
 }

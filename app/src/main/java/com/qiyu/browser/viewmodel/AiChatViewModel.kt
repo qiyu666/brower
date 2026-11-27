@@ -6,6 +6,7 @@ import com.qiyu.browser.NovaBrowserApp
 import com.qiyu.browser.model.AiMessage
 import com.qiyu.browser.model.ChatMessage
 import com.qiyu.browser.model.Conversation
+import com.qiyu.browser.model.ModelProvider
 import com.qiyu.browser.util.AiClient
 import com.qiyu.browser.util.AppStrings
 import kotlinx.coroutines.CancellationException
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -50,6 +52,11 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
 
     private var job: Job? = null
 
+    val providers: StateFlow<List<ModelProvider>> = settings.providers
+    val activeProviderId: StateFlow<Long> = settings.activeProviderId
+    val activeProvider: StateFlow<ModelProvider?> =
+        settings.providers.combine(settings.activeProviderId) { list, id -> list.find { it.id == id } }
+
     init {
         scope.launch { conv.observeConversations().collect { _conversations.value = it } }
         scope.launch {
@@ -66,9 +73,42 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun newId(): Long = conv.insertConversation(Conversation(title = AppStrings.t("ai_new_chat")))
 
+    fun effectiveProvider(): ModelProvider? =
+        settings.providers.value.find { it.id == settings.activeProviderId.value }
+
     fun isConfigured(): Boolean {
-        val c = settings.config.value
-        return c.aiBaseUrl.isNotBlank() && c.aiApiKey.isNotBlank() && c.aiModel.isNotBlank()
+        val p = effectiveProvider()
+        return p != null && p.baseUrl.isNotBlank() && p.model.isNotBlank()
+    }
+
+    fun activeModelName(): String =
+        effectiveProvider()?.let { it.name + " · " + it.model } ?: settings.config.value.aiModel
+
+    fun switchProvider(id: Long) {
+        stop()
+        settings.setActiveProvider(id)
+    }
+
+    fun setProviderModel(providerId: Long, model: String) {
+        val p = settings.providers.value.find { it.id == providerId } ?: return
+        settings.upsertProvider(p.copy(model = model))
+    }
+
+    fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) {
+        val id = System.currentTimeMillis()
+        settings.upsertProvider(ModelProvider(id, name.ifBlank { "自定义" }, baseUrl, apiKey, model, false))
+        settings.setActiveProvider(id)
+    }
+
+    fun deleteProvider(id: Long) {
+        settings.deleteProvider(id)
+    }
+
+    fun fetchModels(provider: ModelProvider, onResult: (List<String>) -> Unit, onError: (String) -> Unit) {
+        scope.launch {
+            try { onResult(AiClient.fetchModels(provider.baseUrl, provider.apiKey)) }
+            catch (e: Exception) { onError(e.message ?: AppStrings.t("ai_error")) }
+        }
     }
 
     fun newConversation() {
@@ -97,7 +137,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
         val t = text.trim()
         if (t.isEmpty() || _streaming.value || !isConfigured()) return
         _error.value = null
-        val cfg = settings.config.value
+        val p = effectiveProvider() ?: return
         _streaming.value = true
         _streamingText.value = ""
         job = scope.launch {
@@ -111,7 +151,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
             }
             val req = conv.getMessages(cid).takeLast(HISTORY_LIMIT).map { ChatMessage(it.role, it.content) }
             try {
-                val full = AiClient.streamChat(cfg.aiBaseUrl, cfg.aiApiKey, cfg.aiModel, req) { d ->
+                val full = AiClient.streamChat(p.baseUrl, p.apiKey, p.model, req) { d ->
                     _streamingText.value += d
                 }
                 if (full.isNotEmpty()) conv.addMessage(AiMessage(conversationId = cid, role = "assistant", content = full))

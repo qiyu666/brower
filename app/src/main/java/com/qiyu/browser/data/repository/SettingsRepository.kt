@@ -3,9 +3,11 @@ package com.qiyu.browser.data.repository
 import android.content.Context
 import android.content.res.Resources
 import com.qiyu.browser.model.BrowserConfig
+import com.qiyu.browser.model.ModelProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
+import org.json.JSONObject
 
 class SettingsRepository(private val context: Context) {
 
@@ -45,6 +47,74 @@ class SettingsRepository(private val context: Context) {
     fun resetMenuOrder() {
         _menuOrder.value = DEFAULT_MENU_ORDER
         prefs.edit().remove("menu_order").apply()
+    }
+
+    // ---- AI 模型供应商 ----
+    private val _activeProviderId = MutableStateFlow(prefs.getLong("ai_active_provider", 0L))
+    val activeProviderId: StateFlow<Long> = _activeProviderId
+
+    private val _providers = MutableStateFlow(loadProviders())
+    val providers: StateFlow<List<ModelProvider>> = _providers
+
+    fun upsertProvider(p: ModelProvider) {
+        val list = _providers.value.toMutableList()
+        val i = list.indexOfFirst { it.id == p.id }
+        if (i >= 0) list[i] = p else list.add(p)
+        _providers.value = list
+        saveProviders(list)
+    }
+
+    fun deleteProvider(id: Long) {
+        _providers.value = _providers.value.filter { it.id != id }
+        saveProviders(_providers.value)
+        if (_activeProviderId.value == id) setActiveProvider(_providers.value.firstOrNull()?.id ?: 0L)
+    }
+
+    fun setActiveProvider(id: Long) {
+        _activeProviderId.value = id
+        prefs.edit().putLong("ai_active_provider", id).apply()
+    }
+
+    private fun saveProviders(list: List<ModelProvider>) {
+        val arr = JSONArray()
+        for (p in list) {
+            arr.put(JSONObject().apply {
+                put("id", p.id)
+                put("name", p.name)
+                put("baseUrl", p.baseUrl)
+                put("apiKey", p.apiKey)
+                put("model", p.model)
+                put("builtin", p.builtin)
+            })
+        }
+        prefs.edit().putString("ai_providers", arr.toString()).apply()
+    }
+
+    private fun loadProviders(): List<ModelProvider> {
+        val raw = prefs.getString("ai_providers", null)
+        if (raw != null) {
+            try {
+                val arr = JSONArray(raw)
+                return (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i)
+                    ModelProvider(o.getLong("id"), o.getString("name"), o.optString("baseUrl"), o.optString("apiKey"), o.optString("model"), o.optBoolean("builtin"))
+                }
+            } catch (e: Exception) {
+            }
+        }
+        return seedProviders()
+    }
+
+    private fun seedProviders(): List<ModelProvider> {
+        val g = _config.value
+        val list = mutableListOf<ModelProvider>()
+        if (g.aiBaseUrl.isNotBlank() || g.aiModel.isNotBlank()) list.add(ModelProvider(1, "默认", g.aiBaseUrl, g.aiApiKey, g.aiModel))
+        list.add(ModelProvider(2, "DeepSeek", "https://api.deepseek.com/v1", "", "deepseek-chat", true))
+        list.add(ModelProvider(3, "OpenAI", "https://api.openai.com/v1", "", "gpt-4o-mini", true))
+        list.add(ModelProvider(4, "Qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "", "qwen-plus", true))
+        saveProviders(list)
+        if (_activeProviderId.value == 0L) _activeProviderId.value = list.firstOrNull()?.id ?: 0L
+        return list
     }
 
     private fun loadConfig(): BrowserConfig {
