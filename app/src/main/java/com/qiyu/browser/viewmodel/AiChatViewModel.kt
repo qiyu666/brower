@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AiChatViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,6 +58,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
     val activeProviderId: StateFlow<Long> = settings.activeProviderId
     val activeProvider: StateFlow<ModelProvider?> =
         settings.providers.combine(settings.activeProviderId) { list, id -> list.find { it.id == id } }
+            .stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
         scope.launch { conv.observeConversations().collect { _conversations.value = it } }
