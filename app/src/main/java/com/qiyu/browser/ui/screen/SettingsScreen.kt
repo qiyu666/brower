@@ -664,7 +664,7 @@ SettingRow(
         ProviderListDialog(
             providers = providers,
             activeId = activeProviderId,
-            onSwitch = { viewModel.setActiveProvider(it) },
+            onSwitch = { viewModel.activateProvider(it) },
             onDelete = { viewModel.deleteProvider(it) },
             onClose = { providerListDialog = false }
         )

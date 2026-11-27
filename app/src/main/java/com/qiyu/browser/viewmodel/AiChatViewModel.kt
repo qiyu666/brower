@@ -90,6 +90,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
     fun switchProvider(id: Long) {
         stop()
         settings.setActiveProvider(id)
+        settings.syncGlobalFromProvider(id)
     }
 
     fun setProviderModel(providerId: Long, model: String) {

@@ -75,6 +75,12 @@ class SettingsRepository(private val context: Context) {
         prefs.edit().putLong("ai_active_provider", id).apply()
     }
 
+    /** 让全局 AI 字段（接口地址/密钥/模型）跟随指定供应商，保持设置页与实际使用一致 */
+    fun syncGlobalFromProvider(providerId: Long) {
+        val p = _providers.value.find { it.id == providerId } ?: return
+        updateConfig { c -> c.copy(aiBaseUrl = p.baseUrl, aiApiKey = p.apiKey, aiModel = p.model) }
+    }
+
     fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) {
         val id = System.currentTimeMillis()
         upsertProvider(ModelProvider(id, name.ifBlank { "自定义" }, baseUrl, apiKey, model, false))

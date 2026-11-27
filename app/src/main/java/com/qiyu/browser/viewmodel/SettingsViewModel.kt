@@ -49,4 +49,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) = repo.addProvider(name, baseUrl, apiKey, model)
     fun deleteProvider(id: Long) = repo.deleteProvider(id)
     fun setActiveProvider(id: Long) = repo.setActiveProvider(id)
+    fun activateProvider(id: Long) {
+        repo.setActiveProvider(id)
+        repo.syncGlobalFromProvider(id)
+    }
 }
