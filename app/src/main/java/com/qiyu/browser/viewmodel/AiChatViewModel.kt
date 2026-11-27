@@ -111,7 +111,10 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
     fun fetchModels(provider: ModelProvider, onResult: (List<String>) -> Unit, onError: (String) -> Unit) {
         scope.launch {
             try { onResult(AiClient.fetchModels(provider.baseUrl, provider.apiKey)) }
-            catch (e: Exception) { onError(e.message ?: AppStrings.t("ai_error")) }
+            catch (e: Exception) {
+                val preset = AiClient.presetModels(provider.baseUrl)
+                if (preset.isNotEmpty()) onResult(preset) else onError(e.message ?: AppStrings.t("ai_error"))
+            }
         }
     }
 

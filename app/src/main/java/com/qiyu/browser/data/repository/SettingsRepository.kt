@@ -75,6 +75,12 @@ class SettingsRepository(private val context: Context) {
         prefs.edit().putLong("ai_active_provider", id).apply()
     }
 
+    /** 更新当前激活供应商（设置页编辑接口地址/密钥/模型时同步回供应商，确保真正生效） */
+    fun updateActiveProvider(transform: (ModelProvider) -> ModelProvider) {
+        val p = _providers.value.find { it.id == _activeProviderId.value } ?: return
+        upsertProvider(transform(p))
+    }
+
     /** 让全局 AI 字段（接口地址/密钥/模型）跟随指定供应商，保持设置页与实际使用一致 */
     fun syncGlobalFromProvider(providerId: Long) {
         val p = _providers.value.find { it.id == providerId } ?: return

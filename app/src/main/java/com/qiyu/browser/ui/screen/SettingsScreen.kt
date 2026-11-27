@@ -120,7 +120,9 @@ fun SettingsScreen(
             aiModels = list
             if (list.isNotEmpty() && config.aiModel.isBlank()) viewModel.setAiModel(list.first())
         } catch (e: Exception) {
-            aiModelError = e.message
+            val preset = AiClient.presetModels(url)
+            aiModels = preset
+            aiModelError = if (preset.isEmpty()) e.message else AppStrings.t("ai_fetch_note")
         }
         aiFetching = false
     }

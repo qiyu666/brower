@@ -41,9 +41,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setSearchEngine(engine: String) = repo.setSearchEngine(engine)
     fun setUseDesktopMode(enabled: Boolean) = repo.setUseDesktopMode(enabled)
     fun setDownloadDir(dir: String) = repo.setDownloadDir(dir)
-    fun setAiBaseUrl(url: String) = repo.setAiBaseUrl(url)
-    fun setAiApiKey(key: String) = repo.setAiApiKey(key)
-    fun setAiModel(model: String) = repo.setAiModel(model)
+    fun setAiBaseUrl(url: String) {
+        repo.setAiBaseUrl(url)
+        repo.updateActiveProvider { it.copy(baseUrl = url) }
+    }
+    fun setAiApiKey(key: String) {
+        repo.setAiApiKey(key)
+        repo.updateActiveProvider { it.copy(apiKey = key) }
+    }
+    fun setAiModel(model: String) {
+        repo.setAiModel(model)
+        repo.updateActiveProvider { it.copy(model = model) }
+    }
     fun setMenuOrder(order: List<String>) = repo.setMenuOrder(order)
     fun resetMenuOrder() = repo.resetMenuOrder()
     fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) = repo.addProvider(name, baseUrl, apiKey, model)

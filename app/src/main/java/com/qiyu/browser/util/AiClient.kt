@@ -104,6 +104,17 @@ object AiClient {
         sb.toString()
     }
 
+    /** 各常用端点的预设模型（远端获取失败或无密钥时兜底）。 */
+    fun presetModels(baseUrl: String): List<String> {
+        val u = baseUrl.lowercase()
+        return when {
+            u.contains("deepseek") -> listOf("deepseek-chat", "deepseek-reasoner")
+            u.contains("dashscope") || u.contains("qwen") -> listOf("qwen-plus", "qwen-turbo", "qwen-max", "qwen-long")
+            u.contains("openai") -> listOf("gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo")
+            else -> emptyList()
+        }
+    }
+
     /** 归一化 base URL：去首尾空白与结尾斜杠。 */
     private fun normalize(baseUrl: String): String = baseUrl.trim().trimEnd('/')
 }
