@@ -27,7 +27,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.detectTapGestures
+import androidx.compose.ui.input.pointer.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -77,6 +82,7 @@ fun AiChatScreen(
     val listState = rememberLazyListState()
     val context = LocalContext.current
     var pendingImage by remember { mutableStateOf<String?>(null) }
+    var viewImage by remember { mutableStateOf<String?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch { pendingImage = imageToDataUrl(context, uri) }
     }
@@ -157,7 +163,7 @@ fun AiChatScreen(
                             items(count) { i ->
                                 val m = messages.getOrNull(i)
                                 if (m != null) {
-                                    if (m.role == "user") UserBubble(m.content, m.image)
+                                    if (m.role == "user") UserBubble(m.content, m.image) { viewImage = it }
                                     else AssistantBubble(m.content)
                                 } else {
                                     StreamingBubble(streamingText)
@@ -178,7 +184,7 @@ fun AiChatScreen(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    DataUrlImage(pendingImage!!, 48.dp, 48.dp, 8.dp)
+                    DataUrlImage(pendingImage!!, 48.dp, 48.dp, 8.dp) { viewImage = pendingImage }
                     Spacer(Modifier.width(8.dp))
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { pendingImage = null }) {
@@ -262,6 +268,8 @@ fun AiChatScreen(
             onClose = { showAddProvider = false }
         )
     }
+
+    viewImage?.let { ImageViewerDialog(it) { viewImage = null } }
 }
 
 @Composable
@@ -329,7 +337,7 @@ private fun ConversationDialog(
 }
 
 @Composable
-private fun DataUrlImage(dataUrl: String, w: Dp, h: Dp, radius: Dp = 10.dp) {
+private fun DataUrlImage(dataUrl: String, w: Dp, h: Dp, radius: Dp = 10.dp, onClick: (() -> Unit)? = null) {
     val bmp = remember(dataUrl) {
         try {
             val b64 = dataUrl.substringAfter("base64,")
@@ -340,23 +348,88 @@ private fun DataUrlImage(dataUrl: String, w: Dp, h: Dp, radius: Dp = 10.dp) {
         }
     }
     if (bmp != null) {
+        var m = Modifier
+            .width(w)
+            .height(h)
+            .clip(RoundedCornerShape(radius))
+        if (onClick != null) m = m.clickable(onClick)
         Image(
             bitmap = bmp.asImageBitmap(),
             contentDescription = null,
-            modifier = Modifier
-                .width(w)
-                .height(h)
-                .clip(RoundedCornerShape(radius)),
+            modifier = m,
             contentScale = ContentScale.Crop
         )
     }
 }
 
 @Composable
-private fun UserBubble(content: String, image: String? = null) {
+private fun ZoomableImage(bitmap: Bitmap) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var tx by remember { mutableFloatStateOf(0f) }
+    var ty by remember { mutableFloatStateOf(0f) }
+    Image(
+        bitmap = bitmap.asImageBitmap(),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(bitmap) {
+                detectTransformGestures { _, _, zoom, pan ->
+                    scale = (scale * zoom).coerceIn(0.5f, 8f)
+                    tx += pan.x
+                    ty += pan.y
+                }
+            }
+            .pointerInput(bitmap) {
+                detectTapGestures(onDoubleTap = { scale = 1f; tx = 0f; ty = 0f })
+            }
+            .graphicsLayer {
+                translateX = tx
+                translateY = ty
+                val s = scale
+                scaleX = s
+                scaleY = s
+            }
+    )
+}
+
+@Composable
+private fun ImageViewerDialog(dataUrl: String, onClose: () -> Unit) {
+    val bmp = remember(dataUrl) {
+        try {
+            val b64 = dataUrl.substringAfter("base64,")
+            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    Dialog(onDismissRequest = onClose, usePlatformDefaultWidth = false) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            if (bmp != null) ZoomableImage(bmp)
+            Text(
+                "✕",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .clickable(onClick = onClose)
+                    .padding(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun UserBubble(content: String, image: String? = null, onImageClick: ((String) -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
         if (image != null) {
-            DataUrlImage(image, 160.dp, 120.dp, 12.dp)
+            DataUrlImage(image, 160.dp, 120.dp, 12.dp) { onImageClick?.invoke(image) }
             if (content.isNotBlank()) Spacer(Modifier.height(6.dp))
         }
         if (content.isNotBlank() || image == null) {
