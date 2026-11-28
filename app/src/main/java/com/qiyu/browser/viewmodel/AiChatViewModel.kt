@@ -100,7 +100,8 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addProvider(name: String, baseUrl: String, apiKey: String, model: String) {
         val id = System.currentTimeMillis()
-        settings.upsertProvider(ModelProvider(id, name.ifBlank { "自定义" }, baseUrl, apiKey, model, false))
+        val u = AiClient.normalizeBaseUrl(baseUrl)
+        settings.upsertProvider(ModelProvider(id, name.ifBlank { "自定义" }, u, apiKey, model, false))
         settings.setActiveProvider(id)
     }
 

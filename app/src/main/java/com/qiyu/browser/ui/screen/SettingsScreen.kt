@@ -685,7 +685,7 @@ SettingRow(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val u = aiUrlInput.trim()
+                    val u = AiClient.normalizeBaseUrl(aiUrlInput)
                     if (u.isNotEmpty()) { viewModel.setAiBaseUrl(u); aiModels = emptyList(); doFetch(u, config.aiApiKey) }
                     aiUrlDialog = false
                 }) { Text(AppStrings.t("ai_fetch")) }
@@ -835,7 +835,7 @@ private fun AddProviderDialog(onAdd: (String, String, String, String) -> Unit, o
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (baseUrl.isNotBlank() || model.isNotBlank()) onAdd(name, baseUrl, apiKey, model) }) {
+            TextButton(onClick = { if (baseUrl.isNotBlank() || model.isNotBlank()) onAdd(name, AiClient.normalizeBaseUrl(baseUrl), apiKey, model) }) {
                 Text(AppStrings.t("ai_save"))
             }
         },

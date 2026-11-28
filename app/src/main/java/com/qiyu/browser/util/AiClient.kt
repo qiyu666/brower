@@ -117,4 +117,19 @@ object AiClient {
 
     /** 归一化 base URL：去首尾空白与结尾斜杠。 */
     private fun normalize(baseUrl: String): String = baseUrl.trim().trimEnd('/')
+
+    /** 归一化用户输入的接口地址：补 https://，并为已知云厂商补全 OpenAI 兼容后缀（deepseek/openai→/v1，dashscope→/compatible-mode/v1）。 */
+    fun normalizeBaseUrl(input: String): String {
+        var s = input.trim()
+        if (s.isEmpty()) return s
+        if (!s.startsWith("http://") && !s.startsWith("https://")) s = "https://" + s
+        s = s.trimEnd('/')
+        val host = s.substringAfter("://").substringBefore("/").substringBefore(":").lowercase()
+        return when {
+            host.contains("dashscope") -> if (s.endsWith("/compatible-mode/v1")) s else s + "/compatible-mode/v1"
+            host.contains("deepseek") -> if (s.endsWith("/v1")) s else s + "/v1"
+            host.contains("openai") -> if (s.endsWith("/v1")) s else s + "/v1"
+            else -> s
+        }
+    }
 }
