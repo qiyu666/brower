@@ -18,5 +18,6 @@ data class AiMessage(
     val conversationId: Long,
     val role: String,
     val content: String,
+    val image: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -151,7 +151,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
         job = scope.launch {
             val cid = _currentId.value ?: newId().also { _currentId.value = it }
             val isFirst = conv.getMessages(cid).isEmpty()
-            conv.addMessage(AiMessage(conversationId = cid, role = "user", content = t))
+            conv.addMessage(AiMessage(conversationId = cid, role = "user", content = t, image = image))
             if (isFirst && t.isNotEmpty()) {
                 conv.getConversation(cid)?.let { c ->
                     conv.updateConversation(c.copy(title = t.take(24), updatedAt = System.currentTimeMillis()))

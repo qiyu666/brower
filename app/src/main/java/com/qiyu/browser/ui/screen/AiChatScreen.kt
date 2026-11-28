@@ -25,6 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import android.graphics.Bitmap
@@ -152,7 +156,7 @@ fun AiChatScreen(
                             items(count) { i ->
                                 val m = messages.getOrNull(i)
                                 if (m != null) {
-                                    if (m.role == "user") UserBubble(m.content)
+                                    if (m.role == "user") UserBubble(m.content, m.image)
                                     else AssistantBubble(m.content)
                                 } else {
                                     StreamingBubble(streamingText)
@@ -173,12 +177,7 @@ fun AiChatScreen(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            Text(AppStrings.t("ai_image"), style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                        }
-                    }
+                    DataUrlImage(pendingImage!!, 48.dp, 48.dp, 8.dp)
                     Spacer(Modifier.width(8.dp))
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { pendingImage = null }) {
@@ -329,17 +328,47 @@ private fun ConversationDialog(
 }
 
 @Composable
-private fun UserBubble(content: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
-        Text(
-            content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
+private fun DataUrlImage(dataUrl: String, w: Dp, h: Dp, radius: Dp = 10.dp) {
+    val bmp = remember(dataUrl) {
+        try {
+            val b64 = dataUrl.substringAfter("base64,")
+            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    if (bmp != null) {
+        Image(
+            bitmap = bmp.asImageBitmap(),
+            contentDescription = null,
             modifier = Modifier
-                .widthIn(max = 420.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .width(w)
+                .height(h)
+                .clip(RoundedCornerShape(radius)),
+            contentScale = ContentScale.Crop
         )
+    }
+}
+
+@Composable
+private fun UserBubble(content: String, image: String? = null) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
+        if (image != null) {
+            DataUrlImage(image, 160.dp, 120.dp, 12.dp)
+            if (content.isNotBlank()) Spacer(Modifier.height(6.dp))
+        }
+        if (content.isNotBlank() || image == null) {
+            Text(
+                content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
     }
 }
 
