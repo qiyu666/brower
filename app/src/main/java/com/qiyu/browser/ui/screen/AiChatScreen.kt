@@ -126,7 +126,7 @@ fun AiChatScreen(
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     if (messages.isEmpty() && !streaming) {
-                        EmptyChatState { s -> scope.launch { vm.send(s) } }
+                        EmptyChatState()
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -346,7 +346,7 @@ private fun StreamingBubble(text: String) {
 }
 
 @Composable
-private fun EmptyChatState(onPick: (String) -> Unit) {
+private fun EmptyChatState() {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -357,19 +357,6 @@ private fun EmptyChatState(onPick: (String) -> Unit) {
         Spacer(Modifier.height(12.dp))
         Text(AppStrings.t("ai_empty_hint"), style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-        Spacer(Modifier.height(18.dp))
-        listOf(AppStrings.t("ai_example_1"), AppStrings.t("ai_example_2"), AppStrings.t("ai_example_3")).forEach { ex ->
-            Text(
-                ex,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                modifier = Modifier
-                    .clickable { onPick(ex) }
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(50.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                    .padding(vertical = 4.dp)
-            )
-        }
     }
 }
 
