@@ -182,8 +182,8 @@ fun AiChatScreen(
                     Spacer(Modifier.width(8.dp))
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { pendingImage = null }) {
-                        Icon(Icons.Default.Clear, AppStrings.t("ai_remove_image"), Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Text("✕", style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                 }
             }
