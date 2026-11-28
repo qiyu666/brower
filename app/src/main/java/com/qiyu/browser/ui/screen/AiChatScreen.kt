@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qiyu.browser.model.Conversation
 import com.qiyu.browser.model.ModelProvider
+import com.qiyu.browser.ui.component.MarkdownText
 import com.qiyu.browser.util.AppStrings
 import com.qiyu.browser.viewmodel.AiChatViewModel
 import kotlinx.coroutines.launch
@@ -81,23 +83,21 @@ fun AiChatScreen(
                 Row(
                     modifier = Modifier
                         .clickable { showPicker = true }
-                        .widthIn(max = 150.dp)
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val prov = activeProvider
-                    Text(prov?.name ?: AppStrings.t("ai_select_model"), style = MaterialTheme.typography.labelSmall,
-                        color = if (prov != null) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    Text(
+                        activeProvider?.let { it.name + if (it.model.isNotBlank()) " · " + it.model else "" }
+                            ?: AppStrings.t("ai_select_model"),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (activeProvider != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false))
-                    if (prov != null && prov.model.isNotBlank()) {
-                        Spacer(Modifier.width(4.dp))
-                        Text(prov.model, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false))
-                    }
+                        modifier = Modifier.widthIn(max = 110.dp)
+                    )
+                    Icon(Icons.Filled.ExpandMore, null, Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 IconButton(onClick = { showList = true }) {
                     Icon(Icons.Filled.Chat, AppStrings.t("ai_conversations"))
@@ -124,16 +124,26 @@ fun AiChatScreen(
                     TextButton(onClick = onNavigateToSettings) { Text(AppStrings.t("ai_config_cta")) }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    state = listState,
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(count) { i ->
-                        val m = messages.getOrNull(i)
-                        if (m != null) Bubble(m.content, m.role == "user")
-                        else Bubble(streamingText, false, streaming = true)
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    if (messages.isEmpty() && !streaming) {
+                        EmptyChatState { s -> scope.launch { vm.send(s) } }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = listState,
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(count) { i ->
+                                val m = messages.getOrNull(i)
+                                if (m != null) {
+                                    if (m.role == "user") UserBubble(m.content)
+                                    else AssistantBubble(m.content)
+                                } else {
+                                    StreamingBubble(streamingText)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -276,21 +286,90 @@ private fun ConversationDialog(
 }
 
 @Composable
-private fun Bubble(content: String, isUser: Boolean, streaming: Boolean = false) {
-    Column(
-        Modifier.fillMaxWidth(),
-        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-    ) {
+private fun UserBubble(content: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.End) {
         Text(
-            if (streaming && content.isEmpty()) "…" else content,
+            content,
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
-                .background(
-                    if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(12.dp)
-                )
+                .widthIn(max = 420.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         )
+    }
+}
+
+@Composable
+private fun AssistantBubble(content: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.Start) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 440.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            MarkdownText(content)
+        }
+    }
+}
+
+@Composable
+private fun StreamingBubble(text: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = Alignment.Start) {
+        if (text.isBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text(AppStrings.t("ai_thinking"), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 440.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                MarkdownText(text)
+                Text("▍", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyChatState(onPick: (String) -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Filled.AutoAwesome, null, Modifier.size(46.dp),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f))
+        Spacer(Modifier.height(12.dp))
+        Text(AppStrings.t("ai_empty_hint"), style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+        Spacer(Modifier.height(18.dp))
+        listOf(AppStrings.t("ai_example_1"), AppStrings.t("ai_example_2"), AppStrings.t("ai_example_3")).forEach { ex ->
+            Text(
+                ex,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                modifier = Modifier
+                    .clickable { onPick(ex) }
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(vertical = 4.dp)
+            )
+        }
     }
 }
 
