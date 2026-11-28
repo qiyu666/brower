@@ -65,7 +65,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
         scope.launch {
             _currentId.flatMapLatest { cid ->
                 val base: Flow<List<AiMessage>> = if (cid == null) emptyFlow() else conv.observeMessages(cid)
-                base.map { list -> list.map { ChatMessage(it.role, it.content) } }
+                base.map { list -> list.map { ChatMessage(it.role, it.content, it.image) } }
             }.collect { _messages.value = it }
         }
         scope.launch {
