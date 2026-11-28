@@ -156,10 +156,10 @@ class SettingsRepository(private val context: Context) {
     /** 菜单项默认顺序（与溢出菜单定义一致；新增项在此追加，旧存档缺项时自动补全） */
     companion object {
         val DEFAULT_MENU_ORDER = listOf(
-            "bookmarks", "history", "downloads",
-            "ai_chat",
-            "incognito", "settings", "dev_tools", "share", "desktop_mode",
-            "traffic", "scan_qr", "clear_data", "copy_link"
+            "ai_chat", "bookmarks", "downloads", "share",
+            "settings", "history", "dev_tools", "desktop_mode",
+            "traffic", "scan_qr", "clear_data", "copy_link",
+            "incognito"
         )
     }
 

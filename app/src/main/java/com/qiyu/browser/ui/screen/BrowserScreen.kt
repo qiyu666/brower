@@ -734,19 +734,19 @@ private fun OverflowMenuSheet(
     onAiChat: () -> Unit
 ) {
     val defs = listOf(
-        MenuDef("bookmarks", Icons.Filled.Star, "bookmarks", onBookmarks),
-        MenuDef("history", Icons.Filled.History, "history", onHistory),
-        MenuDef("downloads", Icons.Filled.Download, "downloads", onDownloads),
         MenuDef("ai_chat", Icons.Filled.AutoAwesome, "ai_chat", onAiChat),
-        MenuDef("incognito", Icons.Filled.Face, "incognito", onIncognito),
-        MenuDef("settings", Icons.Filled.Settings, "settings", onSettings),
-        MenuDef("dev_tools", Icons.Filled.Code, "dev_tools", onDev),
+        MenuDef("bookmarks", Icons.Filled.Star, "bookmarks", onBookmarks),
+        MenuDef("downloads", Icons.Filled.Download, "downloads", onDownloads),
         MenuDef("share", Icons.Filled.Share, "share", onShare),
+        MenuDef("settings", Icons.Filled.Settings, "settings", onSettings),
+        MenuDef("history", Icons.Filled.History, "history", onHistory),
+        MenuDef("dev_tools", Icons.Filled.Code, "dev_tools", onDev),
         MenuDef("desktop_mode", Icons.Filled.Computer, "desktop_mode", onDesktopMode),
         MenuDef("traffic", Icons.Filled.DataUsage, "traffic", onTraffic),
         MenuDef("scan_qr", Icons.Filled.QrCode, "scan_qr", onScanQr),
         MenuDef("clear_data", Icons.Filled.CleaningServices, "clear_data", onClearData),
         MenuDef("copy_link", Icons.Filled.Link, "copy_link", onCopyLink),
+        MenuDef("incognito", Icons.Filled.Face, "incognito", onIncognito),
     )
 
     var reorderMode by remember { mutableStateOf(false) }
