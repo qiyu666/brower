@@ -30,8 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.detectTapGestures
-import androidx.compose.ui.input.pointer.detectTransformGestures
+import androidx.compose.ui.input.pointer.detectDragGestures
+import androidx.compose.ui.input.pointer.detectZoomGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
@@ -374,21 +374,22 @@ private fun ZoomableImage(bitmap: Bitmap) {
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(bitmap) {
-                detectTransformGestures { _, _, zoom, pan ->
-                    scale = (scale * zoom).coerceIn(0.5f, 8f)
-                    tx += pan.x
-                    ty += pan.y
+                detectZoomGestures { zoomValue, _, _ ->
+                    scale = (scale * zoomValue).coerceIn(0.5f, 8f)
                 }
             }
             .pointerInput(bitmap) {
-                detectTapGestures(onDoubleTap = { scale = 1f; tx = 0f; ty = 0f })
+                detectDragGestures { _, change ->
+                    tx += change.x
+                    ty += change.y
+                    change.consume()
+                }
             }
             .graphicsLayer {
-                translateX = tx
-                translateY = ty
-                val s = scale
-                scaleX = s
-                scaleY = s
+                translationX = tx
+                translationY = ty
+                scaleX = scale
+                scaleY = scale
             }
     )
 }
