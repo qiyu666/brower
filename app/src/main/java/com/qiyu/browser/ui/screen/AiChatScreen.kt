@@ -26,8 +26,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.dp
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import com.qiyu.browser.model.Conversation
 import com.qiyu.browser.model.ModelProvider
 import com.qiyu.browser.ui.component.MarkdownText
@@ -60,6 +70,11 @@ fun AiChatScreen(
     var showAddProvider by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    var pendingImage by remember { mutableStateOf<String?>(null) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch { pendingImage = imageToDataUrl(context, uri) }
+    }
 
     val count = messages.size + if (streaming) 1 else 0
     LaunchedEffect(count, streamingText) {
@@ -153,6 +168,25 @@ fun AiChatScreen(
                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
+            if (pendingImage != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            Text(AppStrings.t("ai_image"), style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { pendingImage = null }) {
+                        Icon(Icons.Default.Close, AppStrings.t("ai_remove_image"), Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -160,6 +194,11 @@ fun AiChatScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
+                IconButton(onClick = { imagePicker.launch("image/*") }) {
+                    Icon(Icons.Default.Add, AppStrings.t("ai_attach_image"),
+                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                }
+                Spacer(Modifier.width(4.dp))
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
@@ -175,9 +214,13 @@ fun AiChatScreen(
                     IconButton(
                         onClick = {
                             val msg = input
-                            if (msg.isNotBlank()) { input = ""; scope.launch { vm.send(msg) } }
+                            val img = pendingImage
+                            if (msg.isNotBlank() || img != null) {
+                                input = ""; pendingImage = null
+                                scope.launch { vm.send(msg, img) }
+                            }
                         },
-                        enabled = configured && input.isNotBlank()
+                        enabled = configured && (input.isNotBlank() || pendingImage != null)
                     ) { Icon(Icons.Default.Send, AppStrings.t("ai_send")) }
                 }
             }
@@ -491,3 +534,22 @@ private fun AddProviderDialog(onAdd: (String, String, String, String) -> Unit, o
         }
     }
 }
+
+/** 读取并缩放图片为 base64 data URL（JPEG，最长边 1024px），供多模态发送；IO 线程执行。 */
+suspend fun imageToDataUrl(context: Context, uri: Uri): String? =
+    withContext(Dispatchers.IO) {
+        try {
+            val raw = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+                ?: return@withContext null
+            val maxSide = maxOf(raw.width, raw.height)
+            val bmp = if (maxSide > 1024) {
+                val f = 1024f / maxSide
+                Bitmap.createScaledBitmap(raw, (raw.width * f).toInt(), (raw.height * f).toInt(), true)
+            } else raw
+            val bos = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, bos)
+            "data:image/jpeg;base64," + android.util.Base64.encodeToString(bos.toByteArray(), android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }

@@ -141,9 +141,9 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun send(text: String) {
+    fun send(text: String, image: String? = null) {
         val t = text.trim()
-        if (t.isEmpty() || _streaming.value || !isConfigured()) return
+        if ((t.isEmpty() && image == null) || _streaming.value || !isConfigured()) return
         _error.value = null
         val p = effectiveProvider() ?: return
         _streaming.value = true
@@ -152,12 +152,16 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
             val cid = _currentId.value ?: newId().also { _currentId.value = it }
             val isFirst = conv.getMessages(cid).isEmpty()
             conv.addMessage(AiMessage(conversationId = cid, role = "user", content = t))
-            if (isFirst) {
+            if (isFirst && t.isNotEmpty()) {
                 conv.getConversation(cid)?.let { c ->
                     conv.updateConversation(c.copy(title = t.take(24), updatedAt = System.currentTimeMillis()))
                 }
             }
-            val req = conv.getMessages(cid).takeLast(HISTORY_LIMIT).map { ChatMessage(it.role, it.content) }
+            val base = conv.getMessages(cid).takeLast(HISTORY_LIMIT).map { ChatMessage(it.role, it.content) }
+            val req = if (image != null && base.isNotEmpty()) {
+                val last = base.last()
+                base.dropLast(1) + ChatMessage(last.role, last.content, image)
+            } else base
             try {
                 val full = AiClient.streamChat(p.baseUrl, p.apiKey, p.model, req) { d ->
                     _streamingText.value += d

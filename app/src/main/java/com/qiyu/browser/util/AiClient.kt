@@ -58,10 +58,18 @@ object AiClient {
             put("stream", true)
             val ma = JSONArray()
             for (m in messages) {
-                ma.put(JSONObject().apply {
-                    put("role", m.role)
-                    put("content", m.content)
-                })
+                val obj = JSONObject()
+                obj.put("role", m.role)
+                val img = m.image
+                if (img != null) {
+                    val parts = JSONArray()
+                    if (m.content.isNotBlank()) parts.put(JSONObject().put("type", "text").put("text", m.content))
+                    parts.put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", img)))
+                    obj.put("content", parts)
+                } else {
+                    obj.put("content", m.content)
+                }
+                ma.put(obj)
             }
             put("messages", ma)
         }
