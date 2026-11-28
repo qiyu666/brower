@@ -347,15 +347,14 @@ private fun DataUrlImage(dataUrl: String, w: Dp, h: Dp, radius: Dp = 10.dp, onCl
         }
     }
     if (bmp != null) {
-        var m = Modifier
-            .width(w)
-            .height(h)
-            .clip(RoundedCornerShape(radius))
-        if (onClick != null) m = m.clickable(onClick)
         Image(
             bitmap = bmp.asImageBitmap(),
             contentDescription = null,
-            modifier = m,
+            modifier = Modifier
+                .width(w)
+                .height(h)
+                .clip(RoundedCornerShape(radius))
+                .clickable { onClick?.invoke() },
             contentScale = ContentScale.Crop
         )
     }
@@ -399,7 +398,7 @@ private fun ImageViewerDialog(dataUrl: String, onClose: () -> Unit) {
             null
         }
     }
-    Dialog(onDismissRequest = onClose, usePlatformDefaultWidth = false) {
+    Dialog(onDismissRequest = onClose) {
         Box(
             Modifier
                 .fillMaxSize()
